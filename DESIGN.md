@@ -3,7 +3,6 @@ Goals
 
 - Any (key, nonce) pair is NEVER reused.
 - Key revocation.
-- File can be decrypted in isolation.
 - As many file attributes as possible are encrypted.
 
 Cryptographic Primitives
@@ -28,10 +27,12 @@ Anatomy of a File
 Structure
 ---------
 
-  filename: authenc(orig.filename)
-  data: header . authenc(orig.data)
-  stat: ?:nobody 600
-  xattrs
+    filename: authenc(orig.filename)
+    data: header . authenc(orig.data)
+    stat: ?:nobody 600
+          mtime: epoch
+          atime: epoch
+    xattrs
     __fangfs-stat: authenc(orig.stat)
     xattr: authenc(orig.<xattr>)
 
@@ -40,9 +41,7 @@ Header
 
 The header contains the following unpadded little-endian fields:
 
-  uint8_t version;
-  uint32_t opslimit;
-  uint32_t memlimit;  
+    uint8_t version;
 
 Operational Design
 ==================
@@ -51,21 +50,21 @@ EVERY time a file or its attributes are modified, a new nonce is generated.
 Files are divided into file system-sized blocks, and each block is
 encrypted along with its nonce in following un-padded structure:
 
-  char nonce[NONCEBYTES];
-  char ciphertext[LEN];
+    char nonce[NONCEBYTES];
+    char ciphertext[LEN];
 
 where LEN is on 0..BLOCKSIZE inclusive.  Generating a new nonce on every edit
 is necessary, because one key is used for the entire FangFS filesystem.
 
-A file called /.__FANGFS_META in the *source filesystem* contains the
+A file called /.__FANGFS_META in the *source* filesystem contains the
 following unpadded little-endian fields:
 
-  uint8_t version;
-  uint32_t opslimit;
-  uint32_t memlimit;
+    uint8_t version;
   
-  for each child key:
-    authenc(masterKey, childKey)
+    for each child key:
+      uint32_t opslimit;
+      uint32_t memlimit;
+      authenc(MasterKey, ChildKey)
 
 Access Revocation
 =================
@@ -79,8 +78,8 @@ To explain the FangFS solution to this, consider the following example:
 
 Bob runs an encrypted filesystem. The meta file contains two key fields:
 
-  Enc(MasterKey, BobKey)
-  Enc(MasterKey, AliceKey)
+    authenc(MasterKey, BobKey)
+    authenc(MasterKey, AliceKey)
 
 When Alice mounts the filesystem, FangFS decrypts MasterKey using her key.
 At any time, her key may be removed, or more keys may be added.
