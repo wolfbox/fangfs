@@ -5,7 +5,7 @@ enable_testing()
 add_definitions(-D_FORTIFY_SOURCE=2)
 set(CMAKE_C_FLAGS "-Wall -Wextra -Wshadow -Wno-unused-parameter -Werror -g -fstack-protector -O")
 
-add_executable(fangfs src/main.c src/fangfs.c src/file.c src/util.c)
+add_executable(fangfs src/main.c src/fangfs.c src/metafile.c src/file.c src/util.c)
 target_link_libraries(fangfs fuse sodium)
 
 add_executable(test_path_join tests/path_join.c src/util.c)
@@ -14,5 +14,5 @@ add_test(path_join_test test_path_join)
 add_executable(test_endian tests/endian.c)
 add_test(endian_test test_endian)
 
-add_executable(test_header_parse tests/header_parse.c src/file.c)
-add_test(header_parse_test test_header_parse)
+add_executable(test_metafile tests/metafile.c src/metafile.c)
+add_test(metafile_test test_metafile)
