@@ -33,8 +33,8 @@ Structure
           mtime: epoch
           atime: epoch
     xattrs
-    __fangfs-stat: authenc(orig.stat)
-    xattr: authenc(orig.<xattr>)
+        __fangfs-stat: authenc(orig.stat)
+        xattr: authenc(orig.<xattr>)
 
 Header
 ------
@@ -60,6 +60,7 @@ A file called /.__FANGFS_META in the *source* filesystem contains the
 following unpadded little-endian fields:
 
     uint8_t version;
+    uint32_t block_size;
   
     for each child key:
       uint32_t opslimit;

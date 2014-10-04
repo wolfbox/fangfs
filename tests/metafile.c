@@ -3,7 +3,7 @@
 #include "test.h"
 #include "../src/metafile.h"
 
-void test(void) {
+void test_field(void) {
 	do_test();
 
 	metafield_t field;
@@ -40,6 +40,6 @@ void test(void) {
 }
 
 int main(void) {
-	test();
+	test_field();
 	return 0;
 }

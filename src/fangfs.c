@@ -1,5 +1,6 @@
 #include "fangfs.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -10,9 +11,20 @@
 #include <attr/xattr.h>
 #include "util.h"
 
+static int initialize_empty_filesystem(fangfs_t* self) {
+	// Create our master key
+	randombytes_buf(self->master_key, sizeof(self->master_key));
+
+	return 0;
+}
+
 int fangfs_fsinit(fangfs_t* self, const char* source) {
-	int error = sodium_mlock(self->key, sizeof(self->key));
-	if(error) { return 1; }
+	bool is_empty = false;
+
+	{
+		int error = sodium_mlock(self->master_key, sizeof(self->master_key));
+		if(error) { return 1; }
+	}
 
 	// Check for errors in the source
 	{
@@ -21,9 +33,11 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 			return errno;
 		}
 
-		if(!S_ISDIR(st_buf.st_mode)) {
+		if(!S_ISDIR(st_buf.st_mode) || st_buf.st_nlink < 2) {
 			return ENOTDIR;;
 		}
+
+		is_empty = (st_buf.st_nlink == 2);
 	}
 
 	// Figure out our block size
@@ -36,6 +50,43 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 	}
 
 	self->source = source;
+
+	// If we already have a metafile, parse it.  Otherwise, initialize it.
+	metafile_init(&self->metafile);
+
+	// XXX
+	char metapath[1000];
+	if(path_join(source, METAFILE_NAME, metapath, sizeof(metapath)) != 0) {
+		return 1;
+	}
+
+	bool meta_exists = false;
+	struct stat st_buf;
+	if(stat(metapath, &st_buf) != 0) {
+		if(errno == ENOENT) {
+			errno = 0;
+			meta_exists = true;
+		} else {
+			return errno;
+		}
+	}
+
+	if(meta_exists) {
+		int meta_fd = open(metapath, 0);
+		if(meta_fd == 0) {
+			return errno;
+		}
+
+		metafile_parse(&self->metafile, meta_fd);
+		close(meta_fd);
+	} else {
+		// Let's not trample over an existing populated directory, hmm?
+		if(!is_empty) {
+			return ENOTEMPTY;
+		}
+
+		initialize_empty_filesystem(self);
+	}
 
 	return 0;
 }
@@ -93,6 +144,6 @@ int fangfs_close(fangfs_t* self, struct fuse_file_info* fi) {
 }
 
 void fangfs_fsclose(fangfs_t* self) {
-	sodium_memzero(self->key, sizeof(self->key));
-	sodium_munlock(self->key, sizeof(self->key));
+	sodium_memzero(self->master_key, sizeof(self->master_key));
+	sodium_munlock(self->master_key, sizeof(self->master_key));
 }

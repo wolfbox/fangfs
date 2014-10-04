@@ -7,9 +7,11 @@
 #include <sys/stat.h>
 #include <fuse.h>
 #include <sodium.h>
+#include "metafile.h"
 
 typedef struct {
-	char key[crypto_secretbox_KEYBYTES];
+	metafile_t metafile;
+	char master_key[crypto_secretbox_KEYBYTES];
 	uint32_t blocksize;
 	char const* source;
 } fangfs_t;
