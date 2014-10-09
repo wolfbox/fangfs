@@ -1,3 +1,9 @@
+[![Build Status](https://travis.ci.org/wolfbox/fangfs.svg?branch=master)](https://travis-ci.org/wolfbox/fangfs)
+<a href="https://scan.coverity.com/projects/3203">
+    <img alt="Coverity Scan Build Status"
+	     src="https://scan.coverity.com/projects/3203/badge.svg"/>
+</a>
+
 FangFS is a FUSE-based encrypted filesystem using libsodium.
 
 Why?
