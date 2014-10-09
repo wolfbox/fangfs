@@ -73,11 +73,12 @@ int metafile_parse(metafile_t* self, int fd) {
 
 		// Read the current record until either EOF or it's finished.
 		while(n_read < (ssize_t)META_FIELD_LEN) {
-			n_read += read(fd, buf, (META_FIELD_LEN-n_read));
-			if(n_read == 0) {
+			ssize_t n = read(fd, buf, (META_FIELD_LEN-n_read));
+			if(n == 0) {
 				// EOF
 				return 0;
 			}
+			n_read += n;
 		}
 
 		metafield_t* field = metafile_append_key(self);
