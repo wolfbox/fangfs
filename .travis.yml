@@ -12,6 +12,9 @@ install:
     - curl -LO https://github.com/jedisct1/libsodium/releases/download/1.0.0/libsodium-1.0.0.tar.gz
     - tar -xzf libsodium-1.0.0.tar.gz
     - cd libsodium-1.0.0 && ./configure --prefix=/usr && make && sudo make install
+    - cd ..
 
 script:
-    - mkdir -p build && cd build && cmake .. && make && make test
+    - mkdir -p build
+    - cd build
+    - cmake .. && make && make test
