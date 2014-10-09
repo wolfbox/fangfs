@@ -21,6 +21,7 @@ static int initialize_empty_filesystem(fangfs_t* self) {
 int fangfs_fsinit(fangfs_t* self, const char* source) {
 	bool is_empty = false;
 
+	// Prevent swapping out the master key
 	{
 		int error = sodium_mlock(self->master_key, sizeof(self->master_key));
 		if(error) { return 1; }
@@ -34,7 +35,7 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 		}
 
 		if(!S_ISDIR(st_buf.st_mode) || st_buf.st_nlink < 2) {
-			return ENOTDIR;;
+			return ENOTDIR;
 		}
 
 		is_empty = (st_buf.st_nlink == 2);

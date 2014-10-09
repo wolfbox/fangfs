@@ -121,6 +121,5 @@ int metafile_new_key(metafile_t* self, uint32_t opslimit, uint32_t memlimit,
 	return 0;
 }
 
-// No-op right now, but down the road this
-// may change.
+// No-op right now, but down the road this may change.
 void metafile_free(metafile_t* self) {}
