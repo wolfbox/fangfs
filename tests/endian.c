@@ -24,4 +24,5 @@ void test_u32_from_le_u32(void) {
 
 int main(void) {
 	test_u32_from_le_u32();
+	return 0;
 }

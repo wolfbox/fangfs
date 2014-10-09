@@ -3,7 +3,7 @@ project("FangFS")
 enable_testing()
 
 add_definitions(-D_FORTIFY_SOURCE=2)
-set(CMAKE_C_FLAGS "-Wall -Wextra -Wshadow -Wno-unused-parameter -Werror -g -fstack-protector -O")
+set(CMAKE_C_FLAGS "-Wall -Wextra -Wshadow -Wno-unused-parameter -Werror -g -fstack-protector -O -std=gnu99")
 
 add_executable(fangfs src/main.c src/fangfs.c src/metafile.c src/file.c src/util.c)
 target_link_libraries(fangfs fuse sodium m)
