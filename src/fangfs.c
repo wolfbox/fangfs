@@ -18,6 +18,38 @@ static int initialize_empty_filesystem(fangfs_t* self) {
 	return 0;
 }
 
+static int load_metafile(fangfs_t* self, buf_t* metapath, bool is_empty) {
+	bool meta_exists = false;
+	struct stat st_buf;
+	if(stat((char*)metapath->buf, &st_buf) != 0) {
+		if(errno == ENOENT) {
+			errno = 0;
+			meta_exists = true;
+		} else {
+			return errno;
+		}
+	}
+
+	if(meta_exists) {
+		int meta_fd = open((char*)metapath->buf, 0);
+		if(meta_fd == 0) {
+			return errno;
+		}
+
+		metafile_parse(&self->metafile, meta_fd);
+		close(meta_fd);
+	} else {
+		// Let's not trample over an existing populated directory, hmm?
+		if(!is_empty) {
+			return ENOTEMPTY;
+		}
+
+		initialize_empty_filesystem(self);
+	}
+
+	return 0;
+}
+
 int fangfs_fsinit(fangfs_t* self, const char* source) {
 	bool is_empty = false;
 
@@ -41,6 +73,8 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 		is_empty = (st_buf.st_nlink == 2);
 	}
 
+	self->source = source;
+
 	// Figure out our block size
 	{
 		struct statvfs st_buf;
@@ -50,46 +84,28 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 		self->blocksize = st_buf.f_bsize;
 	}
 
-	self->source = source;
-
 	// If we already have a metafile, parse it.  Otherwise, initialize it.
 	metafile_init(&self->metafile);
 
-	// XXX
-	char metapath[1000];
-	if(path_join(source, METAFILE_NAME, metapath, sizeof(metapath)) != 0) {
+	buf_t metapath;
+	buf_init(&metapath);
+	if(path_join(source, METAFILE_NAME, &metapath) != 0) {
+		buf_free(&metapath);
 		return 1;
 	}
 
-	bool meta_exists = false;
-	struct stat st_buf;
-	if(stat(metapath, &st_buf) != 0) {
-		if(errno == ENOENT) {
-			errno = 0;
-			meta_exists = true;
-		} else {
-			return errno;
-		}
-	}
-
-	if(meta_exists) {
-		int meta_fd = open(metapath, 0);
-		if(meta_fd == 0) {
-			return errno;
-		}
-
-		metafile_parse(&self->metafile, meta_fd);
-		close(meta_fd);
-	} else {
-		// Let's not trample over an existing populated directory, hmm?
-		if(!is_empty) {
-			return ENOTEMPTY;
-		}
-
-		initialize_empty_filesystem(self);
+	int status = load_metafile(self, &metapath, is_empty);
+	if(status != 0) {
+		buf_free(&metapath);
+		return status;
 	}
 
 	return 0;
+}
+
+void fangfs_fsclose(fangfs_t* self) {
+	sodium_memzero(self->master_key, sizeof(self->master_key));
+	sodium_munlock(self->master_key, sizeof(self->master_key));
 }
 
 int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf) {
@@ -110,15 +126,16 @@ int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf) {
 }
 
 int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
-    char* real_path = malloc(1000);
-    int status = path_join(self->source, path, real_path, 1000);
+	buf_t real_path;
+    int status = path_join(self->source, path, &real_path);
     if(status != 0) {
-    	free(real_path);
+    	buf_free(&real_path);
     	return 1;
     }
 
-	int fd = open(real_path, fi->flags);
-	free(real_path);
+	int fd = open((char*)real_path.buf, fi->flags);
+	buf_free(&real_path);
+
 	if(fd == 0) {
 		return errno;
 	}
@@ -142,9 +159,4 @@ int fangfs_read(fangfs_t* self, char* buf, size_t size, off_t offset, \
 int fangfs_close(fangfs_t* self, struct fuse_file_info* fi) {
 	close(fi->fh);
 	return 0;
-}
-
-void fangfs_fsclose(fangfs_t* self) {
-	sodium_memzero(self->master_key, sizeof(self->master_key));
-	sodium_munlock(self->master_key, sizeof(self->master_key));
 }

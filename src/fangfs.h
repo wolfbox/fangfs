@@ -16,10 +16,11 @@ typedef struct {
 	char const* source;
 } fangfs_t;
 
+int fangfs_fsinit(fangfs_t* self, const char* source);
+void fangfs_fsclose(fangfs_t* self);
+
 int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi);
 int fangfs_close(fangfs_t* self, struct fuse_file_info* fi);
-int fangfs_fsinit(fangfs_t* self, const char* source);
 int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf);
 int fangfs_read(fangfs_t* self, char* buf, size_t size, off_t offset, \
                 struct fuse_file_info* fi);
-void fangfs_fsclose(fangfs_t* self);
