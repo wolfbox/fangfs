@@ -92,8 +92,11 @@ int metafile_parse(metafile_t* self) {
 	int status = exlock_obtain(self->lockpath);
 	if(status != 0) { return status; }
 
-	int fd = open(self->metapath, 0);
-	if(fd == 0) { return 1; }
+	int fd = open(self->metapath, O_RDONLY);
+	if(fd < 0) {
+		exlock_release(self->lockpath);
+		return 1;
+	}
 
 	{
 		ssize_t n_read = read(fd, &self->version, sizeof(self->version));
@@ -143,7 +146,11 @@ int metafile_write(metafile_t* self) {
 	int status = exlock_obtain(self->lockpath);
 	if(status != 0) { return status; }
 
-	int fd = open(self->metapath, 0);
+	int fd = open(self->metapath, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
+	if(fd < 0) {
+		exlock_release(self->lockpath);
+		return 1;
+	}
 
 	size_t outbuf_len = sizeof(self->version) +
 	                    sizeof(self->block_size) +
@@ -152,8 +159,9 @@ int metafile_write(metafile_t* self) {
 	uint8_t* cur = outbuf;
 
 	memcpy(cur, &self->version, sizeof(self->version));
-	cur += self->version;
+	cur += sizeof(self->version);
 
+	// XXX This needs to be converted to little-endian
 	memcpy(cur, &self->block_size, sizeof(self->block_size));
 	cur += sizeof(self->block_size);
 

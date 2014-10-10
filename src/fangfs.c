@@ -25,10 +25,7 @@ static int load_metafile(fangfs_t* self, bool is_empty) {
 	bool meta_exists = false;
 	struct stat st_buf;
 	if(stat(self->metafile.metapath, &st_buf) != 0) {
-		if(errno == ENOENT) {
-			errno = 0;
-			meta_exists = true;
-		} else {
+		if(errno != ENOENT) {
 			return errno;
 		}
 	}
@@ -126,7 +123,7 @@ int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
 	int fd = open((char*)real_path.buf, fi->flags);
 	buf_free(&real_path);
 
-	if(fd == 0) {
+	if(fd < 0) {
 		return errno;
 	}
 

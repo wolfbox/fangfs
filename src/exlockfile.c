@@ -11,7 +11,7 @@ bool exlock_try_obtain(const char* path) {
 	// Reset errno so people can get an error code if they like.
 	errno = 0;
 
-	int fd = open(path, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR);
+	int fd = open(path, O_WRONLY|O_CREAT|O_EXCL, S_IRUSR|S_IWUSR);
 	if(fd < 0) {
 		return false;
 	} else {
