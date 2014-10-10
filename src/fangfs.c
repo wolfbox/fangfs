@@ -104,7 +104,7 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 }
 
 void fangfs_fsclose(fangfs_t* self) {
-	sodium_memzero(self->master_key, sizeof(self->master_key));
+	// Zeros the key and allows its page to be swapped again.
 	sodium_munlock(self->master_key, sizeof(self->master_key));
 }
 
