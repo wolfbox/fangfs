@@ -25,10 +25,10 @@ static metafield_t* metafile_append_key(metafile_t* self) {
 void metafield_parse(metafield_t* self, uint8_t inbuf[META_FIELD_LEN]) {
 	uint8_t* cur = inbuf;
 
-	self->opslimit = u32_from_le_u32((uint32_t)(u32_from_bytes(cur)));
+	self->opslimit = u32_from_le((uint32_t)(u32_from_bytes(cur)));
 	cur += sizeof(uint32_t);
 
-	self->memlimit = u32_from_le_u32((uint32_t)(u32_from_bytes(cur)));
+	self->memlimit = u32_from_le((uint32_t)(u32_from_bytes(cur)));
 	cur += sizeof(uint32_t);
 
 	memcpy(self->nonce, cur, sizeof(self->nonce));
@@ -110,7 +110,7 @@ int metafile_parse(metafile_t* self) {
 			status = 1;
 			goto cleanup;
 		}
-		self->block_size = u32_from_le_u32(self->block_size);
+		self->block_size = u32_from_le(self->block_size);
 	}
 
 	// Read records until EOF
@@ -161,9 +161,9 @@ int metafile_write(metafile_t* self) {
 	memcpy(cur, &self->version, sizeof(self->version));
 	cur += sizeof(self->version);
 
-	// XXX This needs to be converted to little-endian
-	memcpy(cur, &self->block_size, sizeof(self->block_size));
-	cur += sizeof(self->block_size);
+	uint32_t block_size = u32_to_le(self->block_size);
+	memcpy(cur, &block_size, sizeof(block_size));
+	cur += sizeof(block_size);
 
 	for(size_t i = 0; i < self->n_keys; i += 1) {
 		metafield_serialize(&self->keys[i], cur);
