@@ -24,6 +24,7 @@ int buf_grow(buf_t* buf, size_t size) {
 	// Otherwise, use the provided size.
 	uint8_t* newbuf = realloc(buf->buf, size);
 	if(newbuf == NULL) { return 1; }
+	buf->buf_len = size;
 	buf->buf = newbuf;
 
 	return 0;
