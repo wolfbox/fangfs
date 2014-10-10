@@ -15,13 +15,16 @@ static int initialize_empty_filesystem(fangfs_t* self) {
 	// Create our master key
 	randombytes_buf(self->master_key, sizeof(self->master_key));
 
+	// Create our metafile
+	metafile_write(&self->metafile);
+
 	return 0;
 }
 
-static int load_metafile(fangfs_t* self, buf_t* metapath, bool is_empty) {
+static int load_metafile(fangfs_t* self, bool is_empty) {
 	bool meta_exists = false;
 	struct stat st_buf;
-	if(stat((char*)metapath->buf, &st_buf) != 0) {
+	if(stat(self->metafile.metapath, &st_buf) != 0) {
 		if(errno == ENOENT) {
 			errno = 0;
 			meta_exists = true;
@@ -31,13 +34,8 @@ static int load_metafile(fangfs_t* self, buf_t* metapath, bool is_empty) {
 	}
 
 	if(meta_exists) {
-		int meta_fd = open((char*)metapath->buf, 0);
-		if(meta_fd == 0) {
-			return errno;
-		}
-
-		metafile_parse(&self->metafile, meta_fd);
-		close(meta_fd);
+		int status = metafile_parse(&self->metafile);
+		if(status != 0) { return status; }
 	} else {
 		// Let's not trample over an existing populated directory, hmm?
 		if(!is_empty) {
@@ -85,26 +83,17 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 	}
 
 	// If we already have a metafile, parse it.  Otherwise, initialize it.
-	metafile_init(&self->metafile);
-
-	buf_t metapath;
-	buf_init(&metapath);
-	if(path_join(source, METAFILE_NAME, &metapath) != 0) {
-		buf_free(&metapath);
-		return 1;
+	int status = metafile_init(&self->metafile, source);
+	if(status == 0) {
+		status = load_metafile(self, is_empty);
 	}
 
-	int status = load_metafile(self, &metapath, is_empty);
-	buf_free(&metapath);
-
-	if(status != 0) {
-		return status;
-	}
-
-	return 0;
+	return status;
 }
 
 void fangfs_fsclose(fangfs_t* self) {
+	metafile_free(&self->metafile);
+
 	// Zeros the key and allows its page to be swapped again.
 	sodium_munlock(self->master_key, sizeof(self->master_key));
 }

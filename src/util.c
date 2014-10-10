@@ -29,6 +29,15 @@ int buf_grow(buf_t* buf, size_t size) {
 	return 0;
 }
 
+char* buf_copy_string(buf_t* buf) {
+	size_t len = strlen((char*)buf->buf);
+	uint8_t* newbuf = malloc(len + 1); // Space for terminating null byte
+	if(newbuf == NULL) { return NULL; }
+
+	strcpy((char*)newbuf, (char*)buf->buf);
+	return (char*)newbuf;
+}
+
 void buf_free(buf_t* buf) {
 	free(buf->buf);
 }
