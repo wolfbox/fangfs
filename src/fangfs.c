@@ -95,8 +95,9 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 	}
 
 	int status = load_metafile(self, &metapath, is_empty);
+	buf_free(&metapath);
+
 	if(status != 0) {
-		buf_free(&metapath);
 		return status;
 	}
 
