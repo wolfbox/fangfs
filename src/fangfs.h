@@ -12,7 +12,6 @@
 typedef struct {
 	metafile_t metafile;
 	char master_key[crypto_secretbox_KEYBYTES];
-	uint32_t blocksize;
 	char const* source;
 } fangfs_t;
 

@@ -52,10 +52,11 @@ void metafield_serialize(metafield_t* self, uint8_t outbuf[META_FIELD_LEN]) {
 	memcpy(cur, self->encrypted_key, sizeof(self->encrypted_key));
 }
 
-int metafile_init(metafile_t* self, const char* sourcepath) {
+int metafile_init(metafile_t* self, uint32_t block_size, const char* sourcepath) {
 	int status = 0;
 
 	self->version = FANGFS_META_VERSION;
+	self->block_size = block_size;
 	self->n_keys = 0;
 	memset(self->keys, 0, sizeof(self->keys));
 
@@ -89,6 +90,7 @@ int metafile_init(metafile_t* self, const char* sourcepath) {
 }
 
 int metafile_parse(metafile_t* self) {
+	printf("Parsing\n");
 	int status = exlock_obtain(self->lockpath);
 	if(status != 0) { return status; }
 
@@ -132,6 +134,7 @@ int metafile_parse(metafile_t* self) {
 		metafield_t* field = metafile_append_key(self);
 		metafield_parse(field, buf);
 	}
+
 
 	cleanup:
 		exlock_release(self->lockpath);
@@ -223,7 +226,6 @@ int metafile_new_key(metafile_t* self, uint32_t opslimit, uint32_t memlimit,
 	return 0;
 }
 
-// No-op right now, but down the road this may change.
 void metafile_free(metafile_t* self) {
 	free(self->lockpath);
 	free(self->metapath);

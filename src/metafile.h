@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <sodium.h>
+#include "util.h"
 
 static const uint8_t FANGFS_META_VERSION = 0;
 
@@ -46,7 +47,7 @@ void metafield_serialize(metafield_t* self, uint8_t outbuf[META_FIELD_LEN]);
 void metafield_serialize(metafield_t* self, uint8_t outbuf[META_FIELD_LEN]);
 
 /// Initialize a new metafile. The provided metapath is copied internally.
-int metafile_init(metafile_t* self, const char* metapath);
+int metafile_init(metafile_t* self, uint32_t block_size, const char* metapath);
 
 /// Parse in a metafile.
 int metafile_parse(metafile_t* self);

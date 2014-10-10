@@ -22,18 +22,23 @@ static int initialize_empty_filesystem(fangfs_t* self) {
 }
 
 static int load_metafile(fangfs_t* self, bool is_empty) {
-	bool meta_exists = false;
+	bool meta_exists = true;
 	struct stat st_buf;
 	if(stat(self->metafile.metapath, &st_buf) != 0) {
 		if(errno != ENOENT) {
 			return errno;
 		}
+
+		meta_exists = false;
 	}
 
 	if(meta_exists) {
+		// The metafile already exists: parse it.
 		int status = metafile_parse(&self->metafile);
 		if(status != 0) { return status; }
+		return 0;
 	} else {
+		// The metafile is missing: create it.
 		// Let's not trample over an existing populated directory, hmm?
 		if(!is_empty) {
 			return ENOTEMPTY;
@@ -71,16 +76,17 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 	self->source = source;
 
 	// Figure out our block size
+	uint32_t block_size = 0;
 	{
 		struct statvfs st_buf;
 		if(statvfs(source, &st_buf) != 0) {
 			return errno;
 		}
-		self->blocksize = st_buf.f_bsize;
+		block_size = st_buf.f_bsize;
 	}
 
 	// If we already have a metafile, parse it.  Otherwise, initialize it.
-	int status = metafile_init(&self->metafile, source);
+	int status = metafile_init(&self->metafile, block_size, source);
 	if(status == 0) {
 		status = load_metafile(self, is_empty);
 	}
