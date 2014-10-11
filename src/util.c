@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include "util.h"
@@ -44,8 +45,6 @@ void buf_free(buf_t* buf) {
 }
 
 int path_join(const char* p1, const char* p2, buf_t* outbuf) {
-	if(outbuf == NULL) return 1;
-
 	size_t i = 0;
 	while(p1[i] != 0) {
 		if(i >= outbuf->buf_len) {

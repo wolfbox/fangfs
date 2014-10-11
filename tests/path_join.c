@@ -34,19 +34,11 @@ void test_ok(int(*f)(buf_t*), const char* answer) {
 	buf_free(&buf);
 }
 
-void test_null_buf(void) {
-	do_test();
-
-	int status = simple1(NULL);
-	verify(status == 1);
-}
-
 int main(void) {
 	test_ok(simple1, SIMPLE1_ANSWER);
 	test_ok(simple2, SIMPLE2_ANSWER);
 	test_ok(simple3, SIMPLE3_ANSWER);
 	test_ok(simple4, SIMPLE4_ANSWER);
-	test_null_buf();
 
 	return 0;
 }

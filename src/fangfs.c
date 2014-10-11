@@ -102,17 +102,16 @@ void fangfs_fsclose(fangfs_t* self) {
 }
 
 int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf) {
-	memset(stbuf, 0, sizeof(struct stat));
+	buf_t real_path;
+	buf_init(&real_path);
+    int status = path_join(self->source, path, &real_path);
+    if(status != 0) {
+    	buf_free(&real_path);
+    	return status;
+    }
 
-	if(strcmp(path, "/") == 0) {
-		stbuf->st_mode = S_IFDIR | 0755;
-		stbuf->st_nlink = 2;
-	} else if(strcmp(path, "/.viminfo") == 0) {
-		stbuf->st_mode = S_IFREG | 0644;
-		stbuf->st_nlink = 1;
-		stbuf->st_size = 100;
-	} else {
-		return -ENOENT;
+	if(stat((char*)real_path.buf, stbuf) < 0) {
+		return errno;
 	}
 
 	return 0;
@@ -120,6 +119,7 @@ int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf) {
 
 int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
 	buf_t real_path;
+	buf_init(&real_path);
     int status = path_join(self->source, path, &real_path);
     if(status != 0) {
     	buf_free(&real_path);
