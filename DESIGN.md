@@ -21,13 +21,24 @@ encryption, Poly1305 provides authentication, and a key derivation function
 derived from the memory-hard scrypt function is used to stretch the encryption
 key.
 
+In the rest of this document, the following symbols are used:
+
+- ``authenc(message, nonce, key)``
+  - Authenticated encryption of the message, using the given nonce and key.
+- ``authdec(ciphertext, nonce, key)``
+  - Inverse of ``authenc``.
+- MasterKey
+  - The FangFS filesystem-wide master key. Randomly-generated.
+- FilenameNonce
+  - The FangFS filesystem-wide nonce for *filenames only*. Randomly-generated.
+
 Anatomy of a File
 =================
 
 Structure
 ---------
 
-    filename: authenc(orig.filename)
+    filename: authenc(orig.fullPath, FilenameNonce, MasterKey)
     data: header . authenc(orig.data)
     stat: ?:nobody 600
           mtime: epoch
@@ -61,6 +72,7 @@ following unpadded little-endian fields:
 
     uint8_t version;
     uint32_t block_size;
+    uint8_t filename_nonce[24];
   
     for each child key:
       uint32_t opslimit;
@@ -88,3 +100,67 @@ At any time, her key may be removed, or more keys may be added.
 It is important to understand that Alice *does* know MasterKey, and so this
 approach is *not* intended to prevent potentially hostile users from being
 able to access the filesystem in the future.
+
+Filename Encryption
+===================
+
+It is crucial in an encrypted filesystem to also keep the names of each file
+a secret. This is a common thing for stacked encrypted filesystems to punt,
+and make optional, just because there's no "optimal" solution.
+
+For FangFS, this is not acceptable. The solution it takes should perform at
+least modestly, but does not leak any information.
+
+Anatomy of a Filename
+---------------------
+
+A filename in FangFS is the concatenation of the following:
+
+- 16+N bytes: libsodium "box" with 16-byte MAC
+
+Encoding
+--------
+
+Probably Base32?
+
+- Custom escaping
+  - Assumes all bytes are usable except ``\0`` and ``/``. Not usable at all on
+    non-unix filesystems like FAT, NTFS, and HFS.
+- Base32
+  - Average 160% bloat
+  - ``~16*1.6 = 26`` average bytes of overhead, making the maximum filename
+    223 bytes.
+- Base64
+  - Average 133% bloat
+  - Uses lower-case letters; may be problematic for FAT/NTFS/HFS source
+    filesystems. 
+  - ``~16*1.33 = 22`` average bytes of overhead, making the maximum filename
+    229 bytes.
+
+Path Lookup
+-----------
+
+    def lookup_path(path):
+        components = []
+        current_path = ""
+        for segment in path:
+            current_path = path_join([current_path, path])
+            enc_current_path = authenc(current_path, FilenameNonce, MasterKey)
+            components.append(authenc(current_path, enc_current_path))
+
+        return path_join(components)
+
+Directory Iteration
+-------------------
+
+    def iterate(dirpath):
+        real_path = lookup_path(dirpath)
+        for file in real_path:
+            yield authdec(path_join(dirpath, file.name), FilenameNonce, MasterKey)
+
+Implications
+------------
+
+- Because the filename nonce is global, any unique path will always be
+  encrypted in the same way. This is theoretically an information leak,
+  but is nonetheless desirable for efficient path lookup, and is not a bug.
