@@ -19,5 +19,7 @@ target_link_libraries(test_metafile sodium m)
 add_test(metafile_test test_metafile)
 
 add_executable(test_exlockfile tests/exlockfile.c src/exlockfile.c)
-target_link_libraries(test_exlockfile)
 add_test(exlockfile_test test_exlockfile)
+
+add_executable(test_base32 tests/base32.c src/util.c)
+add_test(base32_test test_base32)
