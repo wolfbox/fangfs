@@ -1,5 +1,6 @@
 #include "fangfs.h"
 
+#include <dirent.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -52,6 +53,7 @@ static int load_metafile(fangfs_t* self, bool is_empty) {
 
 int fangfs_fsinit(fangfs_t* self, const char* source) {
 	bool is_empty = false;
+	self->source = source;
 
 	// Prevent swapping out the master key
 	{
@@ -59,21 +61,30 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 		if(error) { return 1; }
 	}
 
-	// Check for errors in the source
+	// Make sure the source is a directory, and check if it's empty.
+	// Emptiness is checked to avoid creating a new source filesystem in a
+	// populated directory.
 	{
-		struct stat st_buf;
-		if(stat(source, &st_buf) != 0) {
+		DIR* dir = opendir(source);
+		if(dir == NULL) {
 			return errno;
 		}
 
-		if(!S_ISDIR(st_buf.st_mode) || st_buf.st_nlink < 2) {
-			return ENOTDIR;
+		int n_entries = 0;
+		struct dirent entry;
+		struct dirent* result = NULL;
+		errno = 0;
+		while(readdir_r(dir, &entry, &result) == 0) {
+			if(result == NULL) {
+				break;
+			}
+			n_entries += 1;
 		}
+		closedir(dir);
 
-		is_empty = (st_buf.st_nlink == 2);
+		if(errno != 0) { return errno; }
+		is_empty = (n_entries <= 2);
 	}
-
-	self->source = source;
 
 	// Figure out our block size
 	uint32_t block_size = 0;
