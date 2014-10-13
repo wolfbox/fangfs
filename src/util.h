@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 /// A growable buffer type.
-typedef struct {
+struct Buffer {
 	/// The buffer.
 	uint8_t* buf;
 
@@ -12,35 +12,35 @@ typedef struct {
 
 	/// Usecase-defined logical content length.
 	size_t len;
-} buf_t;
 
-/// Initialize an empty buffer.
-void buf_init(buf_t* buf);
+	Buffer(): buf(nullptr), buf_len(0), len(0) {}
+	~Buffer();
+};
 
 /// Grow a buffer to the given size, or double its size if minsize=0. Returns
 /// 0 on success.
-int buf_grow(buf_t* buf, size_t minsize);
+int buf_grow(Buffer& buf, size_t minsize);
 
 /// Helper to copy a C-string into a buffer. The "len" property excludes the
 /// terminating nul byte. Returns 0 on success.
-int buf_load_string(buf_t* buf, const char* str);
+int buf_load_string(Buffer& buf, const char* str);
 
 /// Helper to create an external copy of a C-string in a buffer. Returns NULL
 /// on error.
-char* buf_copy_string(buf_t* buf);
+char* buf_copy_string(Buffer& buf);
 
 /// Free any memory associated with a buffer.
-void buf_free(buf_t* buf);
+void buf_free(Buffer& buf);
 
 /// Join two filesystem paths together. Returns 0 on success.
-int path_join(const char* p1, const char* p2, buf_t* outbuf);
+int path_join(const char* p1, const char* p2, Buffer& outbuf);
 
 static inline uint32_t u32_from_bytes(const uint8_t bytes[4]) {
 	return *(const uint32_t*)bytes;
 }
 
-void base32_enc(const buf_t* input, buf_t* output);
-int base32_dec(const char* input, buf_t* output);
+void base32_enc(const Buffer& input, Buffer& output);
+int base32_dec(const char* input, Buffer& output);
 
 /// Convert a little-endian uint32_t into a native-endian uint32_t.
 static inline uint32_t u32_from_le(uint32_t x) {
@@ -48,13 +48,14 @@ static inline uint32_t u32_from_le(uint32_t x) {
 	return (val[0] << 0) | (val[1] << 8) | (val[2] << 16) | (val[3] << 24);
 }
 
-#if __LITTLE_ENDIAN
+#define FANGFS_LITTLE_ENDIAN
+/*#if __LITTLE_ENDIAN
 #define FANGFS_LITTLE_ENDIAN
 #elif __BIG_ENDIAN
 #define FANGFS_BIG_ENDIAN
 #else
 #error "Unknown platform endianness."
-#endif
+#endif*/
 
 /// Convert a native-endian uint32_t value into little-endian.
 static inline uint32_t u32_to_le(uint32_t x) {

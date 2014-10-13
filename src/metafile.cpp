@@ -73,25 +73,21 @@ void metafield_serialize(metafield_t* self, uint8_t outbuf[META_FIELD_LEN]) {
 
 static int get_paths(metafile_t* self, const char* sourcepath) {
 	// Create the path to the metafile
-	buf_t path_buf;
-	buf_init(&path_buf);
-	if(path_join(sourcepath, METAFILE_NAME, &path_buf) != 0) {
-		buf_free(&path_buf);
+	Buffer path_buf;
+	if(path_join(sourcepath, METAFILE_NAME, path_buf) != 0) {
 		return STATUS_ERROR;
 	}
-	self->metapath = buf_copy_string(&path_buf);
+	self->metapath = buf_copy_string(path_buf);
 	if(self->metapath == NULL) {
-		buf_free(&path_buf);
 		return STATUS_ERROR;
 	}
 
 	// Create the path to the lockfile
-	if(path_join(sourcepath, METAFILE_LOCK, &path_buf) != 0) {
-		buf_free(&path_buf);
+	if(path_join(sourcepath, METAFILE_LOCK, path_buf) != 0) {
 		return STATUS_ERROR;
 	}
-	self->lockpath = buf_copy_string(&path_buf);
-	buf_free(&path_buf);
+
+	self->lockpath = buf_copy_string(path_buf);
 	if(self->lockpath == NULL) {
 		return STATUS_ERROR;
 	}
@@ -204,7 +200,7 @@ int metafile_write(metafile_t* self) {
 	                    sizeof(self->block_size) +
 	                    sizeof(self->filename_nonce) +
 	                    (META_FIELD_LEN * self->n_keys);
-	uint8_t* outbuf = malloc(outbuf_len);
+	uint8_t* outbuf = (uint8_t*)malloc(outbuf_len);
 	uint8_t* cur = outbuf;
 
 	memcpy(cur, &self->version, sizeof(self->version));

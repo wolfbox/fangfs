@@ -31,6 +31,6 @@ int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
 
 
 // Filename utilities
-int path_resolve(fangfs_t* self, const char* path, buf_t* outbuf);
-int path_encrypt(fangfs_t* self, const char* orig, buf_t* outbuf);
-int path_decrypt(fangfs_t* self, const char* orig, buf_t* outbuf);
+int path_resolve(fangfs_t* self, const char* path, Buffer& outbuf);
+int path_encrypt(fangfs_t* self, const char* orig, Buffer& outbuf);
+int path_decrypt(fangfs_t* self, const char* orig, Buffer& outbuf);
