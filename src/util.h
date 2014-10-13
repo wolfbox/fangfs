@@ -35,8 +35,8 @@ void buf_free(buf_t* buf);
 /// Join two filesystem paths together. Returns 0 on success.
 int path_join(const char* p1, const char* p2, buf_t* outbuf);
 
-static inline uint32_t u32_from_bytes(uint8_t bytes[4]) {
-	return *(uint32_t*)bytes;
+static inline uint32_t u32_from_bytes(const uint8_t bytes[4]) {
+	return *(const uint32_t*)bytes;
 }
 
 void base32_enc(const buf_t* input, buf_t* output);

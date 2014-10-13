@@ -12,62 +12,15 @@
 #include <attr/xattr.h>
 #include "util.h"
 
+// Returns 0 on success, 1 if the directory is populated, and -1 on error.
 static int initialize_empty_filesystem(fangfs_t* self) {
-	// Create our master key
-	randombytes_buf(self->master_key, sizeof(self->master_key));
-
-	// Create our metafile
-	metafile_write(&self->metafile);
-
-	return 0;
-}
-
-static int load_metafile(fangfs_t* self, bool is_empty) {
-	bool meta_exists = true;
-	struct stat st_buf;
-	if(stat(self->metafile.metapath, &st_buf) != 0) {
-		if(errno != ENOENT) {
-			return errno;
-		}
-
-		meta_exists = false;
-	}
-
-	if(meta_exists) {
-		// The metafile already exists: parse it.
-		int status = metafile_parse(&self->metafile);
-		if(status != 0) { return status; }
-		return 0;
-	} else {
-		// The metafile is missing: create it.
-		// Let's not trample over an existing populated directory, hmm?
-		if(!is_empty) {
-			return ENOTEMPTY;
-		}
-
-		initialize_empty_filesystem(self);
-	}
-
-	return 0;
-}
-
-int fangfs_fsinit(fangfs_t* self, const char* source) {
-	bool is_empty = false;
-	self->source = source;
-
-	// Prevent swapping out the master key
-	{
-		int error = sodium_mlock(self->master_key, sizeof(self->master_key));
-		if(error) { return 1; }
-	}
-
 	// Make sure the source is a directory, and check if it's empty.
 	// Emptiness is checked to avoid creating a new source filesystem in a
 	// populated directory.
 	{
-		DIR* dir = opendir(source);
+		DIR* dir = opendir(self->source);
 		if(dir == NULL) {
-			return errno;
+			return -1;
 		}
 
 		int n_entries = 0;
@@ -82,27 +35,46 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 		}
 		closedir(dir);
 
-		if(errno != 0) { return errno; }
-		is_empty = (n_entries <= 2);
+		if(errno != 0) { return -1; }
+
+		// At this point, we should have the metafile and the lockfile.
+		if(n_entries > 4) { return 1; }
 	}
 
-	// Figure out our block size
-	uint32_t block_size = 0;
+	// Create our master key
+	randombytes_buf(self->master_key, sizeof(self->master_key));
+
+	// Create our metafile
+	metafile_write(&self->metafile);
+
+	return 0;
+}
+
+int fangfs_fsinit(fangfs_t* self, const char* source) {
+	self->source = source;
+
+	// Prevent swapping out the master key
 	{
-		struct statvfs st_buf;
-		if(statvfs(source, &st_buf) != 0) {
-			return errno;
-		}
-		block_size = st_buf.f_bsize;
+		int error = sodium_mlock(self->master_key, sizeof(self->master_key));
+		if(error) { return -1; }
 	}
 
 	// If we already have a metafile, parse it.  Otherwise, initialize it.
-	int status = metafile_init(&self->metafile, block_size, source);
+	int status = metafile_init(&self->metafile, source);
 	if(status == 0) {
-		status = load_metafile(self, is_empty);
+		int initstatus = initialize_empty_filesystem(self);
+		int result = 0;
+		if(initstatus > 0) { result = ENOTEMPTY; }
+		if(initstatus != 0) {
+			fangfs_fsclose(self);
+			errno = result;
+			return -1;
+		}
+	} else if(status < 0) {
+		return -1;
 	}
 
-	return status;
+	return 0;
 }
 
 void fangfs_fsclose(fangfs_t* self) {

@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
 	{
 		const int status = fangfs_fsinit(&fangfs, source_dir);
 		if(status != 0) {
-			fprintf(stderr, "Initialization error: %s.\n", strerror(status));
+			fprintf(stderr, "Initialization error: %s.\n", strerror(errno));
 			return 1;
 		}
 	}

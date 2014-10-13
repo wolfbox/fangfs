@@ -27,18 +27,25 @@ typedef struct {
 
 #define METAFILE_MAX_KEYS 8
 typedef struct {
+	int metafd;
 	char* metapath;
 	char* lockpath;
 
 	uint8_t version;
 	uint32_t block_size;
 
+	uint8_t filename_nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES];
+
 	size_t n_keys;
 	metafield_t keys[METAFILE_MAX_KEYS];
 } metafile_t;
 
+#if crypto_secretbox_xsalsa20poly1305_NONCEBYTES != 24
+#    error "Weird nonce length"
+#endif
+
 /// Parse in a single field containing key information.
-void metafield_parse(metafield_t* self, uint8_t inbuf[META_FIELD_LEN]);
+void metafield_parse(metafield_t* self, const uint8_t inbuf[META_FIELD_LEN]);
 
 /// Dump this key information field into a buffer.
 void metafield_serialize(metafield_t* self, uint8_t outbuf[META_FIELD_LEN]);
@@ -46,10 +53,11 @@ void metafield_serialize(metafield_t* self, uint8_t outbuf[META_FIELD_LEN]);
 /// Dump a key information field out into a buffer.
 void metafield_serialize(metafield_t* self, uint8_t outbuf[META_FIELD_LEN]);
 
-/// Initialize a new metafile. The provided metapath is copied internally.
-int metafile_init(metafile_t* self, uint32_t block_size, const char* metapath);
+/// Initialize an empty metafile. The provided metapath is copied internally.
+/// Returns 0 if the metafile is created, and 1 if it already existed.
+int metafile_init(metafile_t* self, const char* metapath);
 
-/// Parse in a metafile.
+/// Parse in an existing metafile.
 int metafile_parse(metafile_t* self);
 
 /// Dump the metafile out to disk.
