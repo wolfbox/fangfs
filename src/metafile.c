@@ -8,6 +8,7 @@
 #include "util.h"
 #include "exlockfile.h"
 #include "metafile.h"
+#include "error.h"
 
 // Don't use more than 128M of memory in our kdf when using automatic settings.
 #define MAX_MEM_LIMIT 1024 * 1024 * 1024
@@ -17,7 +18,7 @@ static int metafile_init_new(metafile_t* self) {
 	{
 		struct statvfs st_buf;
 		if(statvfs(self->metapath, &st_buf) != 0) {
-			return -1;
+			return STATUS_ERROR;
 		}
 		self->block_size = st_buf.f_bsize;
 	}
@@ -70,44 +71,55 @@ void metafield_serialize(metafield_t* self, uint8_t outbuf[META_FIELD_LEN]) {
 	memcpy(cur, self->encrypted_key, sizeof(self->encrypted_key));
 }
 
+static int get_paths(metafile_t* self, const char* sourcepath) {
+	// Create the path to the metafile
+	buf_t path_buf;
+	buf_init(&path_buf);
+	if(path_join(sourcepath, METAFILE_NAME, &path_buf) != 0) {
+		buf_free(&path_buf);
+		return STATUS_ERROR;
+	}
+	self->metapath = buf_copy_string(&path_buf);
+	if(self->metapath == NULL) {
+		buf_free(&path_buf);
+		return STATUS_ERROR;
+	}
+
+	// Create the path to the lockfile
+	if(path_join(sourcepath, METAFILE_LOCK, &path_buf) != 0) {
+		buf_free(&path_buf);
+		return STATUS_ERROR;
+	}
+	self->lockpath = buf_copy_string(&path_buf);
+	buf_free(&path_buf);
+	if(self->lockpath == NULL) {
+		return STATUS_ERROR;
+	}
+
+	return 0;
+}
+
 int metafile_init(metafile_t* self, const char* sourcepath) {
 	self->version = FANGFS_META_VERSION;
 	memset(self->filename_nonce, 0, sizeof(self->filename_nonce));
 	self->n_keys = 0;
 	memset(self->keys, 0, sizeof(self->keys));
 
-	// Create the path to the metafile
-	buf_t path_buf;
-	buf_init(&path_buf);
-	if(path_join(sourcepath, METAFILE_NAME, &path_buf) != 0) {
-		buf_free(&path_buf);
-		return -1;
-	}
-	self->metapath = buf_copy_string(&path_buf);
-	if(self->metapath == NULL) {
-		buf_free(&path_buf);
-		return -1;
+	{
+		int status = get_paths(self, sourcepath);
+		if(status < 0) { return status; }
 	}
 
-	// Create the path to the lockfile
-	if(path_join(sourcepath, METAFILE_LOCK, &path_buf) != 0) {
-		buf_free(&path_buf);
-		return -1;
+	{
+		// Obtain our lock file so we can safely open up the metafile
+		int status = exlock_obtain(self->lockpath);
+		if(status != 0) { return status; }
 	}
-	self->lockpath = buf_copy_string(&path_buf);
-	buf_free(&path_buf);
-	if(self->lockpath == NULL) {
-		return -1;
-	}
-
-	// Obtain our lock file so we can safely open up the metafile
-	int status = exlock_obtain(self->lockpath);
-	if(status != 0) { return status; }
 
 	// Open the metafile
 	self->metafd = open(self->metapath, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR);
 	if(self->metafd < 0) {
-		return -1;
+		return STATUS_ERROR;
 	}
 
 	// Figure out if the metafile is empty or not
@@ -115,13 +127,13 @@ int metafile_init(metafile_t* self, const char* sourcepath) {
 		struct stat info;
 		if(fstat(self->metafd, &info) < 0) {
 			close(self->metafd);
-			return -1;
+			return STATUS_ERROR;
 		}
 
 		if(info.st_size > 0) {
 			if(metafile_init_new(self) < 0) {
 				close(self->metafd);
-				return -1;
+				return STATUS_ERROR;
 			}
 		}
 	}
@@ -133,25 +145,25 @@ int metafile_parse(metafile_t* self) {
 	printf("Parsing\n");
 
 	if(lseek(self->metafd, 0, SEEK_SET) < 0) {
-		return 1;
+		return STATUS_CHECK_ERRNO;
 	}
 
 	// Read the constant headers
 	{
 		ssize_t n_read = read(self->metafd, &self->version, sizeof(self->version));
 		if(n_read != 1) {
-			return 1;
+			return STATUS_CHECK_ERRNO;
 		}
 
 		n_read = read(self->metafd, &self->block_size, sizeof(self->block_size));
 		if(n_read < (ssize_t)sizeof(self->block_size)) {
-			return 1;
+			return STATUS_CHECK_ERRNO;
 		}
 		self->block_size = u32_from_le(self->block_size);
 
 		n_read = read(self->metafd, &self->filename_nonce, sizeof(self->filename_nonce));
 		if(n_read < (ssize_t)sizeof(self->filename_nonce)) {
-			return 1;
+			return STATUS_CHECK_ERRNO;
 		}
 	}
 
@@ -179,7 +191,7 @@ int metafile_write(metafile_t* self) {
 	// XXX We should back up the metafile BEFORE overwriting it.
 	// Just in case.
 	if(lseek(self->metafd, 0, SEEK_SET) < 0) {
-		return 1;
+		return STATUS_CHECK_ERRNO;
 	}
 
 	size_t outbuf_len = sizeof(self->version) +
@@ -209,8 +221,10 @@ int metafile_write(metafile_t* self) {
 		ssize_t n = write(self->metafd, outbuf, outbuf_len);
 		if(n < 0) {
 			// XXX Should we take this lying down, or keep trying?
+			int new_errno = errno;
 			free(outbuf);
-			return 1;
+			errno = new_errno;
+			return STATUS_CHECK_ERRNO;
 		}
 
 		n_written += n;
@@ -237,7 +251,7 @@ int metafile_new_key(metafile_t* self, uint32_t opslimit, uint32_t memlimit,
                      uint8_t master_key[crypto_secretbox_KEYBYTES],
                      uint8_t child_key[crypto_secretbox_KEYBYTES]) {
 	metafield_t* field = metafile_append_key(self);
-	if(field == NULL) { return 1; }
+	if(field == NULL) { return STATUS_ERROR; }
 
 	field->opslimit = opslimit;
 	field->memlimit = memlimit;

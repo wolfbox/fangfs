@@ -6,6 +6,7 @@
 #include <time.h>
 #include <sched.h>
 #include "exlockfile.h"
+#include "error.h"
 
 bool exlock_try_obtain(const char* path) {
 	// Reset errno so people can get an error code if they like.
@@ -35,7 +36,7 @@ int exlock_obtain(const char* path) {
 			return 0;
 		} else {
 			if(errno != EEXIST) {
-				return errno;
+				return STATUS_CHECK_ERRNO;
 			}
 		}
 
@@ -47,7 +48,7 @@ int exlock_obtain(const char* path) {
 
 int exlock_release(const char* path) {
 	if(unlink(path) < 0) {
-		return errno;
+		return STATUS_CHECK_ERRNO;
 	}
 
 	return 0;

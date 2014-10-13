@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include "error.h"
 
 static fangfs_t fangfs;
 
@@ -102,8 +103,11 @@ int main(int argc, char** argv) {
 
 	{
 		const int status = fangfs_fsinit(&fangfs, source_dir);
-		if(status != 0) {
-			fprintf(stderr, "Initialization error: %s.\n", strerror(errno));
+		if(status < 0) {
+			fprintf(stderr, "Initialization error: %d.\n", status);
+			if(status == STATUS_CHECK_ERRNO) {
+				fprintf(stderr, "%s\n", strerror(errno));
+			}
 			return 1;
 		}
 	}

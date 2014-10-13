@@ -11,6 +11,7 @@
 #include <sys/statvfs.h>
 #include <attr/xattr.h>
 #include "util.h"
+#include "error.h"
 
 // Returns 0 on success, 1 if the directory is populated, and -1 on error.
 static int initialize_empty_filesystem(fangfs_t* self) {
@@ -20,7 +21,7 @@ static int initialize_empty_filesystem(fangfs_t* self) {
 	{
 		DIR* dir = opendir(self->source);
 		if(dir == NULL) {
-			return -1;
+			return STATUS_CHECK_ERRNO;
 		}
 
 		int n_entries = 0;
@@ -35,7 +36,7 @@ static int initialize_empty_filesystem(fangfs_t* self) {
 		}
 		closedir(dir);
 
-		if(errno != 0) { return -1; }
+		if(errno != 0) { return STATUS_CHECK_ERRNO; }
 
 		// At this point, we should have the metafile and the lockfile.
 		if(n_entries > 4) { return 1; }
@@ -56,22 +57,22 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 	// Prevent swapping out the master key
 	{
 		int error = sodium_mlock(self->master_key, sizeof(self->master_key));
-		if(error) { return -1; }
+		if(error) { return STATUS_ERROR; }
 	}
 
 	// If we already have a metafile, parse it.  Otherwise, initialize it.
 	int status = metafile_init(&self->metafile, source);
 	if(status == 0) {
 		int initstatus = initialize_empty_filesystem(self);
-		int result = 0;
-		if(initstatus > 0) { result = ENOTEMPTY; }
+		int new_errno = 0;
+		if(initstatus > 0) { new_errno = ENOTEMPTY; }
 		if(initstatus != 0) {
 			fangfs_fsclose(self);
-			errno = result;
-			return -1;
+			errno = new_errno;
+			return STATUS_CHECK_ERRNO;
 		}
 	} else if(status < 0) {
-		return -1;
+		return STATUS_ERROR;
 	}
 
 	return 0;
@@ -88,13 +89,13 @@ int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf) {
 	buf_t real_path;
 	buf_init(&real_path);
     int status = path_join(self->source, path, &real_path);
-    if(status != 0) {
+    if(status < 0) {
     	buf_free(&real_path);
     	return status;
     }
 
 	if(stat((char*)real_path.buf, stbuf) < 0) {
-		return errno;
+		return STATUS_CHECK_ERRNO;
 	}
 
 	return 0;
@@ -106,14 +107,16 @@ int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
     int status = path_join(self->source, path, &real_path);
     if(status != 0) {
     	buf_free(&real_path);
-    	return 1;
+    	return STATUS_ERROR;
     }
 
 	int fd = open((char*)real_path.buf, fi->flags);
+	int new_errno = errno;
 	buf_free(&real_path);
 
 	if(fd < 0) {
-		return errno;
+		errno = new_errno;
+		return STATUS_CHECK_ERRNO;
 	}
 
 	fi->fh = fd;

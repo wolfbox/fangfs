@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "util.h"
+#include "error.h"
 
 void buf_init(buf_t* buf) {
 	buf->buf = NULL;
@@ -26,7 +27,7 @@ int buf_grow(buf_t* buf, size_t size) {
 
 	// Otherwise, use the provided size.
 	uint8_t* newbuf = realloc(buf->buf, size);
-	if(newbuf == NULL) { return 1; }
+	if(newbuf == NULL) { return STATUS_ERROR; }
 	buf->buf_len = size;
 	buf->buf = newbuf;
 
@@ -37,7 +38,7 @@ int buf_load_string(buf_t* buf, const char* str) {
 	const size_t len = strlen(str) + 1;
 
 	if(buf_grow(buf, buf->len) != 0) {
-		return 1;
+		return STATUS_ERROR;
 	}
 	buf->len = len - 1;
 	memcpy(buf->buf, str, len);
@@ -110,7 +111,7 @@ int path_join(const char* p1, const char* p2, buf_t* outbuf) {
 		// check the return code.
 		outbuf->buf[0] = 0;
 		outbuf->len = 0;
-		return 1;
+		return STATUS_ERROR;
 	}
 }
 
@@ -170,7 +171,7 @@ int base32_dec(const char* input, buf_t* output) {
 		} else if(ch >= '2' && ch <= '7') {
 			ch -= '2' - 26;
 		} else {
-			return 1;
+			return STATUS_ERROR;
 		}
 
 		group |= ch;
@@ -178,7 +179,7 @@ int base32_dec(const char* input, buf_t* output) {
 		if(bits_left >= 8) {
 			if(out_i >= output->buf_len) {
 				if(buf_grow(output, 0) != 0) {
-					return 1;
+					return STATUS_ERROR;
 				}
 			}
 
