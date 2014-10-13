@@ -83,11 +83,13 @@ int path_join(const char* p1, const char* p2, buf_t* outbuf) {
 
 	size_t p2i = 0;
 	// Add a connecting path sep only if we need to
-	if(p1[i-1] != '/' && p2[0] != '/') {
-		outbuf->buf[i] = '/';
-		i += 1;
-	} else if(p1[i-1] == '/' && p2[0] == '/') {
-		p2i += 1;
+	if(i > 0) {
+		if(p1[i-1] != '/' && p2[0] != '/') {
+			outbuf->buf[i] = '/';
+			i += 1;
+		} else if(p1[i-1] == '/' && p2[0] == '/') {
+			p2i += 1;
+		}
 	}
 
 	while(p2[p2i] != 0) {
