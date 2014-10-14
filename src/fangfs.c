@@ -129,7 +129,10 @@ int fangfs_read(fangfs_t* self, char* buf, size_t size, off_t offset, \
 		return EINVAL;
 	}
 
-	lseek(fi->fh, offset, SEEK_SET);
+	{
+		int result = lseek(fi->fh, offset, SEEK_SET);
+		if(result < 0) { return errno; }
+	}
 	ssize_t n_read = read(fi->fh, buf, size);
 
 	return n_read;

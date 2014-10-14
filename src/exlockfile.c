@@ -25,6 +25,7 @@ bool exlock_try_obtain(const char* path) {
 		// It's tough beans if we can't write. This shouldn't ever happen, and
 		// if it does, our best shot is to just ignore it.
 		if(write(fd, buf, pid_len) < pid_len) {}
+		close(fd);
 		return true;
 	}
 }
