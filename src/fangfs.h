@@ -18,6 +18,7 @@ typedef struct {
 int fangfs_fsinit(fangfs_t* self, const char* source);
 void fangfs_fsclose(fangfs_t* self);
 
+int fangfs_mknod(fangfs_t* self, const char* path, mode_t m, dev_t d);
 int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi);
 int fangfs_close(fangfs_t* self, struct fuse_file_info* fi);
 int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf);
@@ -30,5 +31,6 @@ int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
 
 
 // Filename utilities
-int filename_encrypt(fangfs_t* self, const char* orig, buf_t* outbuf);
-int filename_decrypt(fangfs_t* self, const char* orig, buf_t* outbuf);
+int path_resolve(fangfs_t* self, const char* path, buf_t* outbuf);
+int path_encrypt(fangfs_t* self, const char* orig, buf_t* outbuf);
+int path_decrypt(fangfs_t* self, const char* orig, buf_t* outbuf);

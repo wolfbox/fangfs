@@ -51,6 +51,31 @@ static int initialize_empty_filesystem(fangfs_t* self) {
 	return 0;
 }
 
+int fangfs_mknod(fangfs_t* self, const char* path, mode_t m, dev_t d) {
+	buf_t real_path;
+	buf_init(&real_path);
+
+	{
+		int status = path_resolve(self, path, &real_path);
+		if(status != 0) {
+			buf_free(&real_path);
+			return -status;
+		}
+	}
+
+	{
+		int status = mknod((char*)real_path.buf, m, d);
+		if(status < 0) {
+			buf_free(&real_path);
+			return -errno;
+		}
+	}
+
+	printf("mknod OK\n");
+	buf_free(&real_path);
+	return 0;
+}
+
 int fangfs_fsinit(fangfs_t* self, const char* source) {
 	self->source = source;
 
@@ -88,32 +113,28 @@ void fangfs_fsclose(fangfs_t* self) {
 int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf) {
 	buf_t real_path;
 	buf_init(&real_path);
-    int status = path_join(self->source, path, &real_path);
-    if(status < 0) {
+
+	int status = path_resolve(self, path, &real_path);
+    if(status != 0) {
     	buf_free(&real_path);
-    	return ENOMEM;
+    	return -ENOMEM;
     }
 
 	if(stat((char*)real_path.buf, stbuf) < 0) {
-		return errno;
+		return -errno;
 	}
 
 	return 0;
 }
 
 int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
-	buf_t encrypted_path;
-	buf_init(&encrypted_path);
-	filename_encrypt(self, path, &encrypted_path);
-
 	buf_t real_path;
 	buf_init(&real_path);
-	int status = path_join(self->source, (char*)encrypted_path.buf, &real_path);
-	buf_free(&encrypted_path);
+	int status = path_resolve(self, path, &real_path);
 
 	if(status != 0) {
 		buf_free(&real_path);
-		return ENOMEM;
+		return status;
 	}
 
 	int fd = open((char*)real_path.buf, fi->flags);
@@ -124,6 +145,7 @@ int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
 		return new_errno;
 	}
 
+	printf("Open OK\n");
 	fi->fh = fd;
 	return 0;
 }
@@ -144,17 +166,18 @@ int fangfs_read(fangfs_t* self, char* buf, size_t size, off_t offset, \
 }
 
 int fangfs_opendir(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
-	buf_t newpath;
-	buf_init(&newpath);
+	buf_t real_path;
+	buf_init(&real_path);
 
-	if(path_join(self->source, path, &newpath) != 0) {
-		buf_free(&newpath);
-		return ENOMEM;
+	int status = path_resolve(self, path, &real_path);
+	if(status != 0) {
+		buf_free(&real_path);
+		return status;
 	}
 
-	DIR* dir = opendir((char*)newpath.buf);
+	DIR* dir = opendir((char*)real_path.buf);
 	int new_errno = errno;
-	buf_free(&newpath);
+	buf_free(&real_path);
 
 	if(dir == NULL) {
 		return new_errno;
@@ -190,7 +213,7 @@ int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
 		}
 
 		// Decrypt the filename
-		int status = filename_decrypt(self, entry.d_name, &decrypted);
+		int status = path_decrypt(self, entry.d_name, &decrypted);
 		if(status < 0) {
 			fprintf(stderr, "Tampering detected on file %s\n", entry.d_name);
 			continue;
@@ -210,13 +233,36 @@ int fangfs_close(fangfs_t* self, struct fuse_file_info* fi) {
 	return 0;
 }
 
-int filename_encrypt(fangfs_t* self, const char* orig, buf_t* outbuf) {
+int path_resolve(fangfs_t* self, const char* path, buf_t* outbuf) {
+	if(strcmp(path, "/") == 0) {
+		buf_load_string(outbuf, self->source);
+		return 0;
+	}
+
+	buf_t encrypted_path;
+	buf_init(&encrypted_path);
+	path_encrypt(self, path, &encrypted_path);
+
+	int status = path_join(self->source, (char*)encrypted_path.buf, outbuf);
+	buf_free(&encrypted_path);
+
+	if(status != 0) {
+		outbuf->len = 0;
+		return ENOMEM;
+	}
+	fprintf(stderr, "%s\n", outbuf->buf);
+
+	return 0;
+}
+
+int path_encrypt(fangfs_t* self, const char* orig, buf_t* outbuf) {
 	const size_t orig_len = strlen(orig);
 	buf_t ciphertext;
 	buf_init(&ciphertext);
 	buf_grow(&ciphertext, orig_len + crypto_secretbox_MACBYTES);
 	crypto_secretbox_easy(ciphertext.buf, (uint8_t*)orig, orig_len,
 	                      self->metafile.filename_nonce, self->master_key);
+	ciphertext.len = orig_len + crypto_secretbox_MACBYTES;
 
 	base32_enc(&ciphertext, outbuf);
 
@@ -225,7 +271,7 @@ int filename_encrypt(fangfs_t* self, const char* orig, buf_t* outbuf) {
 	return 0;
 }
 
-int filename_decrypt(fangfs_t* self, const char* orig, buf_t* outbuf) {
+int path_decrypt(fangfs_t* self, const char* orig, buf_t* outbuf) {
 	buf_t ciphertext;
 	buf_init(&ciphertext);
 

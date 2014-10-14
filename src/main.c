@@ -9,6 +9,10 @@
 
 static fangfs_t fangfs;
 
+static int fangfs_fuse_mknod(const char* path, mode_t m, dev_t d) {
+	return fangfs_mknod(&fangfs, path, m, d);
+}
+
 static int fangfs_fuse_open(const char* path, struct fuse_file_info* fi) {
 	return fangfs_open(&fangfs, path, fi);
 }
@@ -47,6 +51,7 @@ static int fangfs_fuse_releasedir(const char* path, struct fuse_file_info* fi) {
 }
 
 static struct fuse_operations fang_ops = {
+	.mknod = fangfs_fuse_mknod,
     .open = fangfs_fuse_open,
     .release = fangfs_fuse_release,
     .getattr = fangfs_fuse_getattr,
