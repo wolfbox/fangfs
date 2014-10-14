@@ -50,16 +50,7 @@ static int fangfs_fuse_releasedir(const char* path, struct fuse_file_info* fi) {
 	return 0;
 }
 
-static struct fuse_operations fang_ops = {
-	.mknod = fangfs_fuse_mknod,
-    .open = fangfs_fuse_open,
-    .release = fangfs_fuse_release,
-    .getattr = fangfs_fuse_getattr,
-    .read = fangfs_fuse_read,
-    .opendir = fangfs_fuse_opendir,
-    .readdir = fangfs_fuse_readdir,
-    .releasedir = fangfs_fuse_releasedir
-};
+static struct fuse_operations fang_ops;
 
 void handle_signal(int signum) {
 	fangfs_fsclose(&fangfs);
@@ -71,6 +62,15 @@ void handle_signal(int signum) {
 }
 
 int main(int argc, char** argv) {
+	fang_ops.mknod = fangfs_fuse_mknod;
+    fang_ops.open = fangfs_fuse_open;
+    fang_ops.release = fangfs_fuse_release;
+    fang_ops.getattr = fangfs_fuse_getattr;
+    fang_ops.read = fangfs_fuse_read;
+    fang_ops.opendir = fangfs_fuse_opendir;
+    fang_ops.readdir = fangfs_fuse_readdir;
+    fang_ops.releasedir = fangfs_fuse_releasedir;
+
 	if(argc < 3) {
 		return 1;
 	}
