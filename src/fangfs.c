@@ -91,32 +91,37 @@ int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf) {
     int status = path_join(self->source, path, &real_path);
     if(status < 0) {
     	buf_free(&real_path);
-    	return status;
+    	return ENOMEM;
     }
 
 	if(stat((char*)real_path.buf, stbuf) < 0) {
-		return STATUS_CHECK_ERRNO;
+		return errno;
 	}
 
 	return 0;
 }
 
 int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
+	buf_t encrypted_path;
+	buf_init(&encrypted_path);
+	filename_encrypt(self, path, &encrypted_path);
+
 	buf_t real_path;
 	buf_init(&real_path);
-    int status = path_join(self->source, path, &real_path);
-    if(status != 0) {
-    	buf_free(&real_path);
-    	return STATUS_ERROR;
-    }
+	int status = path_join(self->source, (char*)encrypted_path.buf, &real_path);
+	buf_free(&encrypted_path);
+
+	if(status != 0) {
+		buf_free(&real_path);
+		return ENOMEM;
+	}
 
 	int fd = open((char*)real_path.buf, fi->flags);
 	int new_errno = errno;
 	buf_free(&real_path);
 
 	if(fd < 0) {
-		errno = new_errno;
-		return STATUS_CHECK_ERRNO;
+		return new_errno;
 	}
 
 	fi->fh = fd;
@@ -138,7 +143,109 @@ int fangfs_read(fangfs_t* self, char* buf, size_t size, off_t offset, \
 	return n_read;
 }
 
+int fangfs_opendir(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
+	buf_t newpath;
+	buf_init(&newpath);
+
+	if(path_join(self->source, path, &newpath) != 0) {
+		buf_free(&newpath);
+		return ENOMEM;
+	}
+
+	DIR* dir = opendir((char*)newpath.buf);
+	int new_errno = errno;
+	buf_free(&newpath);
+
+	if(dir == NULL) {
+		return new_errno;
+	}
+
+	fi->fh = dirfd(dir);
+	return 0;
+}
+
+int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
+                        fuse_fill_dir_t filler, off_t offset,
+                        struct fuse_file_info* fi) {
+	DIR* dir = fdopendir(fi->fh);
+	if(dir == NULL) {
+		return -errno;
+	}
+
+	buf_t decrypted;
+	buf_init(&decrypted);
+
+	struct dirent entry;
+	struct dirent* result;
+	while(readdir_r(dir, &entry, &result) == 0) {
+		if(result == NULL) {
+			return 0;
+		}
+
+		// Skip over "special" names
+		if(entry.d_name[0] == '_') { continue; }
+		if(strcmp(entry.d_name, ".") == 0 ||
+		   strcmp(entry.d_name, "..") == 0) {
+			filler(buf, entry.d_name, NULL, 0);
+		}
+
+		// Decrypt the filename
+		int status = filename_decrypt(self, entry.d_name, &decrypted);
+		if(status < 0) {
+			fprintf(stderr, "Tampering detected on file %s\n", entry.d_name);
+			continue;
+		}
+		filler(buf, (char*)decrypted.buf, NULL, 0);
+	}
+
+	// Something went haywire
+	int new_errno = errno;
+	buf_free(&decrypted);
+
+	return -new_errno;
+}
+
 int fangfs_close(fangfs_t* self, struct fuse_file_info* fi) {
 	close(fi->fh);
+	return 0;
+}
+
+int filename_encrypt(fangfs_t* self, const char* orig, buf_t* outbuf) {
+	const size_t orig_len = strlen(orig);
+	buf_t ciphertext;
+	buf_init(&ciphertext);
+	buf_grow(&ciphertext, orig_len + crypto_secretbox_MACBYTES);
+	crypto_secretbox_easy(ciphertext.buf, (uint8_t*)orig, orig_len,
+	                      self->metafile.filename_nonce, self->master_key);
+
+	base32_enc(&ciphertext, outbuf);
+
+	buf_free(&ciphertext);
+
+	return 0;
+}
+
+int filename_decrypt(fangfs_t* self, const char* orig, buf_t* outbuf) {
+	buf_t ciphertext;
+	buf_init(&ciphertext);
+
+	base32_dec(orig, &ciphertext);
+	buf_grow(outbuf, ciphertext.len - crypto_secretbox_MACBYTES + 1);
+
+	int result = crypto_secretbox_open_easy(outbuf->buf, ciphertext.buf,
+	                                        ciphertext.len,
+	                                        self->metafile.filename_nonce,
+	                                        self->master_key);
+	if(result < 0) {
+		buf_free(&ciphertext);
+		outbuf->len = 0;
+		return STATUS_TAMPERING;
+	}
+
+	outbuf->len = ciphertext.len - crypto_secretbox_MACBYTES;
+	outbuf->buf[outbuf->len] = '\0';
+
+	buf_free(&ciphertext);
+
 	return 0;
 }

@@ -27,47 +27,20 @@ static int fangfs_fuse_read(const char* path, char* buf, size_t size, \
 }
 
 static int fangfs_fuse_opendir(const char* path, struct fuse_file_info* fi) {
-	buf_t newpath;
-	buf_init(&newpath);
-
-	if(path_join(fangfs.source, path, &newpath) != 0) {
-		buf_free(&newpath);
-		return 1;
-	}
-
-	DIR* dir = opendir((char*)newpath.buf);
-	buf_free(&newpath);
-
-	if(dir == NULL) { return errno; }
-
-	fi->fh = dirfd(dir);
-	return 0;
+	return fangfs_opendir(&fangfs, path, fi);
 }
 
 static int fangfs_fuse_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                                off_t offset, struct fuse_file_info* fi) {
-	DIR* dir = fdopendir(fi->fh);
-	if(dir == NULL) { return errno; }
-
-	struct dirent entry;
-	struct dirent* result;
-	while(readdir_r(dir, &entry, &result) == 0) {
-		if(result == NULL) {
-			return 0;
-		}
-
- 		filler(buf, entry.d_name, NULL, 0);
-	}
-
-	return errno;
+	return fangfs_readdir(&fangfs, path, buf, filler, offset, fi);
 }
 
 static int fangfs_fuse_releasedir(const char* path, struct fuse_file_info* fi) {
 	DIR* dir = fdopendir(fi->fh);
-	if(dir == NULL) { return errno; }
+	if(dir == NULL) { return -errno; }
 
 	if(closedir(fdopendir(fi->fh)) < 0) {
-		return errno;
+		return -errno;
 	}
 
 	return 0;
