@@ -97,7 +97,7 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 			return STATUS_CHECK_ERRNO;
 		}
 	} else if(status < 0) {
-		return STATUS_ERROR;
+		return status;
 	}
 
 	return 0;
@@ -210,6 +210,7 @@ int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
 		if(strcmp(entry.d_name, ".") == 0 ||
 		   strcmp(entry.d_name, "..") == 0) {
 			filler(buf, entry.d_name, NULL, 0);
+			continue;
 		}
 
 		// Decrypt the filename

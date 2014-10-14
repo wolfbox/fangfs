@@ -119,7 +119,7 @@ int metafile_init(metafile_t* self, const char* sourcepath) {
 	// Open the metafile
 	self->metafd = open(self->metapath, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR);
 	if(self->metafd < 0) {
-		return STATUS_ERROR;
+		return STATUS_CHECK_ERRNO;
 	}
 
 	// Figure out if the metafile is empty or not
@@ -131,10 +131,16 @@ int metafile_init(metafile_t* self, const char* sourcepath) {
 		}
 
 		if(info.st_size > 0) {
-			if(metafile_init_new(self) < 0) {
-				close(self->metafd);
-				return STATUS_ERROR;
-			}
+			// The metafile exists.
+			int status = metafile_parse(self);
+			if(status < 0) { return status; }
+			return 1;
+		}
+
+		// The metafile does not yet exist. Initialize.
+		if(metafile_init_new(self) < 0) {
+			close(self->metafd);
+			return STATUS_ERROR;
 		}
 	}
 
