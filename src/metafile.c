@@ -230,6 +230,8 @@ int metafile_write(metafile_t* self) {
 		n_written += n;
 	}
 
+	free(outbuf);
+
 	return 0;
 }
 
