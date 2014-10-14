@@ -1,3 +1,9 @@
+env:
+  global:
+    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+    #   via the "travis encrypt" command using the project repo's public key
+    - secure: "blVY5x+GBuAM1qixwcr7u0q36FhHFZ7KKZDR5ai54KUtGsiN9R4wEAf8ccURrx30hnwxpaPaVVRUUesa9E1evG61vOE7PxcmXwXtw3HfuWVevufWN0JjTg6T+Cl5lFwbdKjxdO/bCs8youq+4RlvtT7DVxjghAVrl3JlJU0FUuY="
+
 language: c
 
 compiler:
@@ -18,3 +24,13 @@ script:
     - mkdir -p build
     - cd build
     - cmake .. && make && make test
+
+addons:
+  coverity_scan:
+    project:
+      name: "wolfbox/fangfs"
+      description: "FangFS build submitted via TravisCI"
+    notification_email: i80and@foxquill.com
+    build_command_prepend: "rm -rf build && mkdir -p build && cd build && cmake .."
+    build_command: "make"
+    branch_pattern: coverity_scan
