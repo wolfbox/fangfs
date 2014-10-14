@@ -25,6 +25,11 @@ script:
     - cd build
     - cmake .. && make && make test
 
+matrix:
+    exclude:
+        - compiler: clang
+        - env: COVERITY_SCAN_BRANCH=1
+
 addons:
   coverity_scan:
     project:
