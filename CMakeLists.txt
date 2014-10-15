@@ -3,8 +3,8 @@ project("FangFS")
 enable_testing()
 
 add_definitions(-D_FORTIFY_SOURCE=2)
-set(CMAKE_C_FLAGS "-Wall -Wextra -Wshadow -Wno-unused-parameter -Werror -g -fstack-protector -O -std=c++11")
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wno-unused-parameter -Werror -g -fstack-protector -O -std=gnu++11")
+set(CMAKE_C_FLAGS "-Wall -Wextra -Wshadow -Wno-unused-parameter -Werror -g -fstack-protector -O -std=c++0x")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wno-unused-parameter -Werror -g -fstack-protector -O -std=gnu++0x")
 
 add_executable(fangfs src/main.cpp src/fangfs.cpp src/metafile.cpp src/file.cpp src/exlockfile.cpp src/util.cpp)
 target_link_libraries(fangfs fuse sodium m)
