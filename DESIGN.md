@@ -23,6 +23,8 @@ key.
 
 In the rest of this document, the following symbols are used:
 
+- ``hash(msg)``
+  - 128-bit BLAKE2 hash function.
 - ``authenc(message, nonce, key)``
   - Authenticated encryption of the message, using the given nonce and key.
 - ``authdec(ciphertext, nonce, key)``
@@ -38,7 +40,7 @@ Anatomy of a File
 Structure
 ---------
 
-    filename: authenc(orig.fullPath, FilenameNonce, MasterKey)
+    filename: authenc(hash(orig.origPath) . orig.filename, FilenameNonce, MasterKey)
     data: header . authenc(orig.data)
     stat: ?:nobody 600
           mtime: epoch
@@ -116,26 +118,26 @@ Anatomy of a Filename
 
 A filename in FangFS is the concatenation of the following:
 
-- 16+N bytes: libsodium "box" with 16-byte MAC
+    authenc(hash(path) . filename)
+
+where ``path`` is the full path including filename. This yields
+32 bytes of overhead: 16 for the BLAKE2 hash, and 16 for the MAC.
 
 Encoding
 --------
 
-Probably Base32?
+The underlying "source" filesystem is assumed to be case-sensitive and to allow
+any characters except '\0' and '/'. Given this, the following substitutions
+are made:
 
-- Custom escaping
-  - Assumes all bytes are usable except ``\0`` and ``/``. Not usable at all on
-    non-unix filesystems like FAT, NTFS, and HFS.
-- Base32
-  - Average 160% bloat
-  - ``~16*1.6 = 26`` average bytes of overhead, making the maximum filename
-    223 bytes.
-- Base64
-  - Average 133% bloat
-  - Uses lower-case letters; may be problematic for FAT/NTFS/HFS source
-    filesystems. 
-  - ``~16*1.33 = 22`` average bytes of overhead, making the maximum filename
-    229 bytes.
+    \0 => a
+    a => aa
+    / => b
+    b => bb
+
+It may be worth in the future adding a "safe" mode, where all filenames are
+encoded in Base32 without padding. It is unclear that the added complexity
+and limitations of this mode would be worthwhile, however.
 
 Path Lookup
 -----------
@@ -144,9 +146,9 @@ Path Lookup
         components = []
         current_path = ""
         for segment in path:
-            current_path = path_join([current_path, path])
-            enc_current_path = authenc(current_path, FilenameNonce, MasterKey)
-            components.append(authenc(current_path, enc_current_path))
+            current_path = path_join([current_path, segment])
+            enc_current_path = authenc(hash(current_path) + segment), FilenameNonce, MasterKey)
+            components.append(enc_current_path)
 
         return path_join(components)
 
@@ -156,7 +158,10 @@ Directory Iteration
     def iterate(dirpath):
         real_path = lookup_path(dirpath)
         for file in real_path:
-            yield authdec(path_join(dirpath, file.name), FilenameNonce, MasterKey)
+        	decrypted = authdec(path_join(dirpath, file.name), FilenameNonce, MasterKey)
+        	filename = decrypted[16:]
+        	verify(hash(path_join(dirpath, filename), decrypted[:16]))
+        	yield filename
 
 Implications
 ------------
