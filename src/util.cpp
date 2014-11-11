@@ -39,23 +39,13 @@ int path_join(const char* p1, const char* p2, Buffer& outbuf) {
 		p2i += 1;
 
 		if(i >= outbuf.buf_len) {
-			if(buf_grow(outbuf, 0) != 0) {
-				goto error;
-			}
+			buf_grow(outbuf, 0);
 		}
 	}
 
 	outbuf.buf[i] = 0;
 	outbuf.len = i;
 	return 0;
-
-	error: {
-		// Keep people from accidentally using this buffer if they forget to
-		// check the return code.
-		outbuf.buf[0] = 0;
-		outbuf.len = 0;
-		return STATUS_ERROR;
-	}
 }
 
 #define BASE32_SYMBOLS "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
@@ -121,9 +111,7 @@ int base32_dec(const char* input, Buffer& output) {
 		bits_left += 5;
 		if(bits_left >= 8) {
 			if(out_i >= output.buf_len) {
-				if(buf_grow(output, 0) != 0) {
-					return STATUS_ERROR;
-				}
+				buf_grow(output, 0);
 			}
 
 			output.buf[out_i] = group >> (bits_left - 8);

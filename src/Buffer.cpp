@@ -11,9 +11,9 @@ Buffer::Buffer(Buffer&& other): buf(other.buf), buf_len(other.buf_len), len(othe
 
 Buffer::~Buffer() { buf_free(*this); }
 
-int buf_grow(Buffer& buf, size_t size) {
+void buf_grow(Buffer& buf, size_t size) {
     // Never shrink the buffer.
-    if(size != 0 && size < buf.buf_len) { return 0; }
+    if(size != 0 && size < buf.buf_len) { return; }
 
     // If size is 0, then we're asked to use our best judgment.
     if(size == 0) {
@@ -27,29 +27,23 @@ int buf_grow(Buffer& buf, size_t size) {
 
     // Otherwise, use the provided size.
     uint8_t* newbuf = (uint8_t*)realloc(buf.buf, size);
-    if(newbuf == NULL) { return STATUS_ERROR; }
+    if(newbuf == NULL) { throw AllocationError(); }
     buf.buf_len = size;
     buf.buf = newbuf;
-
-    return 0;
 }
 
-int buf_load_string(Buffer& buf, const char* str) {
+void buf_load_string(Buffer& buf, const char* str) {
     const size_t len = strlen(str) + 1;
 
-    if(buf_grow(buf, buf.len) != 0) {
-        return STATUS_ERROR;
-    }
+    buf_grow(buf, buf.len);
     buf.len = len - 1;
     memcpy(buf.buf, str, len);
-
-    return 0;
 }
 
 char* buf_copy_string(Buffer& buf) {
     size_t len = strlen((char*)buf.buf);
     uint8_t* newbuf = (uint8_t*)malloc(len + 1); // Space for terminating null byte
-    if(newbuf == nullptr) { return nullptr; }
+    if(newbuf == nullptr) { throw AllocationError(); }
 
     strcpy((char*)newbuf, (char*)buf.buf);
     buf.len = len;

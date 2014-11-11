@@ -19,16 +19,14 @@ struct Buffer {
     size_t len;
 };
 
-/// Grow a buffer to the given size, or double its size if minsize=0. Returns
-/// 0 on success.
-int buf_grow(Buffer& buf, size_t minsize);
+/// Grow a buffer to the given size, or double its size if minsize=0.
+void buf_grow(Buffer& buf, size_t minsize);
 
 /// Helper to copy a C-string into a buffer. The "len" property excludes the
-/// terminating nul byte. Returns 0 on success.
-int buf_load_string(Buffer& buf, const char* str);
+/// terminating nul byte.
+void buf_load_string(Buffer& buf, const char* str);
 
-/// Helper to create an external copy of a C-string in a buffer. Returns NULL
-/// on error.
+/// Helper to create an external copy of a C-string in a buffer.
 char* buf_copy_string(Buffer& buf);
 
 /// Free any memory associated with a buffer.
