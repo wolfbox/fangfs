@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <sys/param.h>
 #include "compat.h"
 
 DIR* fdopendir(int fd) {

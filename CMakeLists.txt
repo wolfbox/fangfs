@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project("FangFS")
 enable_testing()
 
-CHECK_FUNCTION_EXISTS(fdopendir, HAVE_FDOPENDIR)
+CHECK_FUNCTION_EXISTS(fdopendir HAVE_FDOPENDIR)
 
 SET(UTIL_SOURCE src/exlockfile.cpp src/util.cpp src/Buffer.cpp)
 if(HAVE_FDOPENDIR)
