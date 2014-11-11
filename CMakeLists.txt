@@ -1,13 +1,28 @@
-cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
+INCLUDE(CheckFunctionExists)
+INCLUDE(FindPkgConfig)
+
+cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project("FangFS")
 enable_testing()
+
+CHECK_FUNCTION_EXISTS(fdopendir, HAVE_FDOPENDIR)
+SET(SOURCE src/fangfs.cpp src/metafile.cpp src/file.cpp src/exlockfile.cpp src/util.cpp)
+
+if(HAVE_FDOPENDIR)
+    add_definitions(-DHAVE_FDOPENDIR)
+else()
+    LIST(APPEND SOURCE src/compat/fdopendir.cpp)
+endif()
+
+pkg_check_modules(FUSE REQUIRED fuse)
+INCLUDE_DIRECTORIES(${FUSE_INCLUDE_DIRS})
 
 add_definitions(-D_FORTIFY_SOURCE=2)
 set(CMAKE_C_FLAGS "-Wall -Wextra -Wshadow -Wno-unused-parameter -Werror -g -fstack-protector -O -std=c++0x")
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wno-unused-parameter -Werror -g -fstack-protector -O -std=gnu++0x")
 
-add_executable(fangfs src/main.cpp src/fangfs.cpp src/metafile.cpp src/file.cpp src/exlockfile.cpp src/util.cpp)
-target_link_libraries(fangfs fuse sodium m)
+add_executable(fangfs src/main.cpp ${SOURCE})
+target_link_libraries(fangfs ${FUSE_LIBRARIES} sodium m)
 
 add_executable(test_path_join tests/path_join.cpp src/util.cpp)
 add_test(path_join_test test_path_join)

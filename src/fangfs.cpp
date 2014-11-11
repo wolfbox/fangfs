@@ -9,9 +9,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/statvfs.h>
-#include <attr/xattr.h>
 #include "util.h"
 #include "error.h"
+#include "compat/compat.h"
 
 // Returns 0 on success, 1 if the directory is populated, and -1 on error.
 static int initialize_empty_filesystem(fangfs_t* self) {

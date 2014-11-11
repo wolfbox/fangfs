@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "error.h"
+#include "compat/compat.h"
 
 static fangfs_t fangfs;
 

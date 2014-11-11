@@ -9,6 +9,7 @@
 #include "exlockfile.h"
 #include "metafile.h"
 #include "error.h"
+#include "compat/compat.h"
 
 // Don't use more than 128M of memory in our kdf when using automatic settings.
 #define MAX_MEM_LIMIT 1024 * 1024 * 1024
@@ -241,9 +242,7 @@ int metafile_new_key_auto(metafile_t* self,
                           uint8_t master_key[crypto_secretbox_KEYBYTES],
                           uint8_t child_key[crypto_secretbox_KEYBYTES]) {
 	// Use 10% of RAM up to 128MB for our memlimit
-	long pages = sysconf(_SC_PHYS_PAGES);
-	long page_size = sysconf(_SC_PAGE_SIZE);
-	uint64_t mem_size = pages * page_size;
+	size_t mem_size = get_memory_size();
 
 	uint32_t opslimit = crypto_pwhash_scryptsalsa208sha256_OPSLIMIT_INTERACTIVE;
 	uint32_t memlimit = (uint32_t)fmin(mem_size*0.1, MAX_MEM_LIMIT);
