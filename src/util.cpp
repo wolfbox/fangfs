@@ -48,6 +48,32 @@ int path_join(const char* p1, const char* p2, Buffer& outbuf) {
 	return 0;
 }
 
+void path_building_for_each(const Buffer& buf, std::function<void(const Buffer& buf)> f) {
+	Buffer result;
+	buf_copy(buf, result);
+
+	// Skip the first character, since it can't be interesting
+	size_t i = 1;
+	while(i < buf.len) {
+		if(buf[i] == '/') {
+			result[i] = '\0';
+			result.len = i;
+			f(result);
+
+			// Put things back
+			result[i] = buf[i];
+		}
+
+		i += 1;
+	}
+
+	// Don't bother calling back on a trailing path separator
+	if(i > 0 && buf[i-1] != '/') {
+		result.len = buf.len;
+		f(result);
+	}
+}
+
 #define BASE32_SYMBOLS "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 void base32_enc(const Buffer& input, Buffer& output) {
 	if(input.len == 0) {

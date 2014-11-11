@@ -9,6 +9,16 @@ Buffer::Buffer(Buffer&& other): buf(other.buf), buf_len(other.buf_len), len(othe
     other.len = 0;
 }
 
+uint8_t Buffer::operator[](size_t i) const {
+    if(i >= this->buf_len) { throw AccessError(); }
+    return this->buf[i];
+}
+
+uint8_t& Buffer::operator[](size_t i) {
+    if(i >= this->buf_len) { throw AccessError(); }
+    return this->buf[i];
+}
+
 Buffer::~Buffer() { buf_free(*this); }
 
 void buf_grow(Buffer& buf, size_t size) {
@@ -35,9 +45,15 @@ void buf_grow(Buffer& buf, size_t size) {
 void buf_load_string(Buffer& buf, const char* str) {
     const size_t len = strlen(str) + 1;
 
-    buf_grow(buf, buf.len);
+    buf_grow(buf, len);
     buf.len = len - 1;
     memcpy(buf.buf, str, len);
+}
+
+void buf_copy(const Buffer& src, Buffer& dest) {
+    buf_grow(dest, src.buf_len);
+    dest.len = src.len;
+    memcpy(dest.buf, src.buf, dest.buf_len);
 }
 
 char* buf_copy_string(Buffer& buf) {

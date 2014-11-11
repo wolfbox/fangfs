@@ -11,3 +11,8 @@ class AllocationError: public std::runtime_error {
 public:
     AllocationError(): std::runtime_error("Memory allocation error") {}
 };
+
+class AccessError: public std::runtime_error {
+public:
+    AccessError(): std::runtime_error("Out-of-bounds memory access") {}
+};

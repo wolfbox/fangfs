@@ -43,7 +43,32 @@ void test_empty_lhs(void) {
 	int status = empty_lhs(buf);
 	verify(strcmp(EMPTY_LHS_ANSWER, (char*)buf.buf) == 0);
 	verify(status == 0);
+}
 
+void path_building_for_each(void) {
+	do_test();
+
+	const char* correct[] = {"/home", "/home/foo", "/home/foo/things"};
+	Buffer src;
+	{
+		size_t i = 0;
+		buf_load_string(src, "/home/foo/things");
+		path_building_for_each(src, [&](const Buffer& cur) {
+			verify(strcmp(reinterpret_cast<const char*>(cur.buf), correct[i]) == 0);
+			i += 1;
+		});
+		verify(i == 3);
+	}
+
+	{
+		size_t i = 0;
+		buf_load_string(src, "/home/foo/things/");
+		path_building_for_each(src, [&](const Buffer& cur) {
+			verify(strcmp(reinterpret_cast<const char*>(cur.buf), correct[i]) == 0);
+			i += 1;
+		});
+		verify(i == 3);
+	}
 }
 
 int main(void) {
@@ -52,6 +77,7 @@ int main(void) {
 	test_ok(simple3, SIMPLE3_ANSWER);
 	test_ok(simple4, SIMPLE4_ANSWER);
 	test_empty_lhs();
+	path_building_for_each();
 
 	return 0;
 }
