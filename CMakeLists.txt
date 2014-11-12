@@ -1,3 +1,4 @@
+INCLUDE(CheckSymbolExists)
 INCLUDE(CheckFunctionExists)
 INCLUDE(FindPkgConfig)
 
@@ -6,12 +7,22 @@ project("FangFS")
 enable_testing()
 
 CHECK_FUNCTION_EXISTS(fdopendir HAVE_FDOPENDIR)
+CHECK_SYMBOL_EXISTS(_SC_PHYS_PAGES unistd.h HAVE_SC_PHYS_PAGES)
+CHECK_SYMBOL_EXISTS(HW_MEMSIZE sys/sysctl.h HAVE_HW_MEMSIZE)
 
 SET(UTIL_SOURCE src/exlockfile.cpp src/util.cpp src/Buffer.cpp)
 if(HAVE_FDOPENDIR)
     add_definitions(-DHAVE_FDOPENDIR)
 else()
     LIST(APPEND UTIL_SOURCE src/compat/fdopendir.cpp)
+endif()
+
+if(HAVE_SC_PHYS_PAGES)
+	add_definitions(-DHAVE_SC_PHYS_PAGES)
+elseif(HAVE_HW_MEMSIZE)
+	add_definitions(-DHAVE_HW_MEMSIZE)
+else()
+	message(FATAL_ERROR "Could not find any way of detecting system memory")
 endif()
 
 SET(SOURCE src/fangfs.cpp src/metafile.cpp src/file.cpp ${UTIL_SOURCE})
