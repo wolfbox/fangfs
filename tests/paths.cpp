@@ -69,6 +69,27 @@ void path_building_for_each(void) {
 	}
 }
 
+void test_basename(void) {
+	do_test();
+
+	{
+		const char* path = "/foo/bar/baz.txt";
+		verify(strcmp(path_get_basename(path), "baz.txt") == 0);
+	}
+
+	{
+		const char* path = "/foo/bar/baz/";
+		verify(strcmp(path_get_basename(path), "") == 0);
+	}
+}
+
+void test_basename_empty(void) {
+	do_test();
+
+	const char* path = "";
+	verify(path == path_get_basename(path));
+}
+
 int main(void) {
 	test_ok(simple1, SIMPLE1_ANSWER);
 	test_ok(simple2, SIMPLE2_ANSWER);
@@ -76,6 +97,8 @@ int main(void) {
 	test_ok(simple4, SIMPLE4_ANSWER);
 	test_empty_lhs();
 	path_building_for_each();
+	test_basename();
+	test_basename_empty();
 
 	return 0;
 }

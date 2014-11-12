@@ -37,7 +37,7 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wno-unused-parameter -Werror -g -fs
 add_executable(fangfs src/main.cpp ${SOURCE})
 target_link_libraries(fangfs ${FUSE_LIBRARIES} sodium m)
 
-add_executable(test_path_join tests/path_join.cpp ${UTIL_SOURCE})
+add_executable(test_path_join tests/paths.cpp ${UTIL_SOURCE})
 add_test(path_join_test test_path_join)
 
 add_executable(test_endian tests/endian.cpp)
