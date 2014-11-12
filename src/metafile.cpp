@@ -75,18 +75,14 @@ void metafield_serialize(metafield_t* self, uint8_t outbuf[META_FIELD_LEN]) {
 static int get_paths(metafile_t* self, const char* sourcepath) {
 	// Create the path to the metafile
 	Buffer path_buf;
-	if(path_join(sourcepath, METAFILE_NAME, path_buf) != 0) {
-		return STATUS_ERROR;
-	}
+	path_join(sourcepath, METAFILE_NAME, path_buf);
 	self->metapath = buf_copy_string(path_buf);
 	if(self->metapath == NULL) {
 		return STATUS_ERROR;
 	}
 
 	// Create the path to the lockfile
-	if(path_join(sourcepath, METAFILE_LOCK, path_buf) != 0) {
-		return STATUS_ERROR;
-	}
+	path_join(sourcepath, METAFILE_LOCK, path_buf);
 
 	self->lockpath = buf_copy_string(path_buf);
 	if(self->lockpath == NULL) {

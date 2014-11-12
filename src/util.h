@@ -4,8 +4,12 @@
 #include <functional>
 #include "Buffer.h"
 
-/// Join two filesystem paths together. Returns 0 on success.
-int path_join(const char* p1, const char* p2, Buffer& outbuf);
+/// Join two filesystem paths together.
+void path_join(const char* p1, const char* p2, Buffer& outbuf);
+
+/// Returns a pointer into path at the start of the basename. If no path
+/// separators are found, returns path.
+char const* path_get_basename(const char* path);
 
 /// Call f("foo"), f("foo/bar"), f("foo/bar/baz"), etc.
 void path_building_for_each(const Buffer& buf, std::function<void(const Buffer& buf)> f);

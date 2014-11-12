@@ -5,7 +5,7 @@
 #include "util.h"
 #include "error.h"
 
-int path_join(const char* p1, const char* p2, Buffer& outbuf) {
+void path_join(const char* p1, const char* p2, Buffer& outbuf) {
 	size_t i = 0;
 	while(p1[i] != 0) {
 		if(i >= outbuf.buf_len) {
@@ -45,7 +45,21 @@ int path_join(const char* p1, const char* p2, Buffer& outbuf) {
 
 	outbuf.buf[i] = 0;
 	outbuf.len = i;
-	return 0;
+}
+
+char const* path_get_basename(const char* path) {
+	int last_path_sep = -1;
+	for(int i = 0; path[i] != '\0'; i += 1) {
+		if(path[i] == '/') {
+			last_path_sep = i;
+		}
+	}
+
+	if(last_path_sep == -1) {
+		return path;
+	}
+
+	return path + last_path_sep + 1;
 }
 
 void path_building_for_each(const Buffer& buf, std::function<void(const Buffer& buf)> f) {

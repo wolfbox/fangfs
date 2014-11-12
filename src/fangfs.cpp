@@ -229,12 +229,8 @@ int path_resolve(fangfs_t* self, const char* path, Buffer& outbuf) {
 	Buffer encrypted_path;
 	path_encrypt(self, path, encrypted_path);
 
-	int status = path_join(self->source, (char*)encrypted_path.buf, outbuf);
+	path_join(self->source, (char*)encrypted_path.buf, outbuf);
 
-	if(status != 0) {
-		outbuf.len = 0;
-		return ENOMEM;
-	}
 	fprintf(stderr, "%s\n", outbuf.buf);
 
 	return 0;
