@@ -23,19 +23,16 @@ const char* ENCODED[] = {
 void test() {
 	do_test();
 
-	buf_t in; buf_init(&in);
-	buf_t out; buf_init(&out);
+	Buffer in;
+	Buffer out;
 	for(size_t i = 0; i < sizeof(ASCII)/sizeof(char*); i += 1) {
-		buf_load_string(&in, ASCII[i]);
-		base32_enc(&in, &out);
+		buf_load_string(in, ASCII[i]);
+		base32_enc(in, out);
 		verify(strcmp((char*)out.buf, ENCODED[i]) == 0);
 
-		base32_dec(ENCODED[i], &out);
+		base32_dec(ENCODED[i], out);
 		verify(strcmp((char*)out.buf, ASCII[i]) == 0);
 	}
-
-	buf_free(&in);
-	buf_free(&out);
 }
 
 int main(void) {
