@@ -185,6 +185,7 @@ int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
 	}
 
 	Buffer decrypted;
+	Buffer fullpath;
 
 	struct dirent entry;
 	struct dirent* result;
@@ -207,7 +208,26 @@ int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
 			fprintf(stderr, "Tampering detected on file %s\n", entry.d_name);
 			continue;
 		}
-		filler(buf, (char*)decrypted.buf, NULL, 0);
+
+		// Strip out the hash
+		const char* filename = reinterpret_cast<char*>(decrypted.buf) +
+		                       crypto_generichash_BYTES;
+
+		// Verify the hash, preventing files from being moved around by someone
+		// outside the encrypted filesystem.
+		{
+			path_join(path, filename, fullpath);
+			fprintf(stderr, "Reading: %s\n", (char*)fullpath.buf);
+			uint8_t path_hash[crypto_generichash_BYTES];
+			crypto_generichash(path_hash, sizeof(path_hash),
+			                   reinterpret_cast<const uint8_t*>(fullpath.buf),
+			                   fullpath.len, nullptr, 0);
+			if(sodium_memcmp(path_hash, decrypted.buf, sizeof(path_hash)) != 0) {
+				continue;
+			}
+		}
+
+		filler(buf, filename, NULL, 0);
 	}
 
 	// Something went haywire
@@ -252,7 +272,7 @@ int path_encrypt(fangfs_t* self, const char* orig, Buffer& outbuf) {
 
 	// Four steps to this
 	// 1) Compute the hash of the whole path
-	uint8_t path_hash[16];
+	uint8_t path_hash[crypto_generichash_BYTES];
 	crypto_generichash(path_hash, sizeof(path_hash), reinterpret_cast<const uint8_t*>(orig),
 	                   orig_len, nullptr, 0);
 
