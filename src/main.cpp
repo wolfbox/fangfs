@@ -107,12 +107,14 @@ int main(int argc, char** argv) {
 	sigaction(SIGINT, &action, nullptr);
 	sigaction(SIGTERM, &action, nullptr);
 
+	int status = 0;
 	try {
-		const int status = fuse_main(argc, argv, &fang_ops, nullptr);
-		fangfs_fsclose(fangfs);
-		return status;
+		status = fuse_main(argc, argv, &fang_ops, nullptr);
 	} catch (std::runtime_error& e) {
 		fprintf(stderr, "Panic: %s\n", e.what());
-		return 1;
+		status = 1;
 	}
+
+	fangfs_fsclose(fangfs);
+	return status;
 }
