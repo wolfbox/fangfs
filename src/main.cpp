@@ -8,40 +8,40 @@
 #include "error.h"
 #include "compat/compat.h"
 
-static fangfs_t fangfs;
+static FangFS fangfs;
 
 static int fangfs_fuse_mknod(const char* path, mode_t m, dev_t d) {
-	return fangfs_mknod(&fangfs, path, m, d);
+	return fangfs_mknod(fangfs, path, m, d);
 }
 
 static int fangfs_fuse_open(const char* path, struct fuse_file_info* fi) {
-	return fangfs_open(&fangfs, path, fi);
+	return fangfs_open(fangfs, path, fi);
 }
 
 static int fangfs_fuse_release(const char* path, struct fuse_file_info* fi) {
-	return fangfs_close(&fangfs, fi);
+	return fangfs_close(fangfs, fi);
 }
 
 static int fangfs_fuse_getattr(const char* path, struct stat* stbuf) {
-	return fangfs_getattr(&fangfs, path, stbuf);
+	return fangfs_getattr(fangfs, path, stbuf);
 }
 
 static int fangfs_fuse_read(const char* path, char* buf, size_t size, \
                             off_t offset, struct fuse_file_info* fi) {
-	return fangfs_read(&fangfs, buf, size, offset, fi);
+	return fangfs_read(fangfs, buf, size, offset, fi);
 }
 
 static int fangfs_fuse_mkdir(const char* path, mode_t mode) {
-	return fangfs_mkdir(&fangfs, path, mode);
+	return fangfs_mkdir(fangfs, path, mode);
 }
 
 static int fangfs_fuse_opendir(const char* path, struct fuse_file_info* fi) {
-	return fangfs_opendir(&fangfs, path, fi);
+	return fangfs_opendir(fangfs, path, fi);
 }
 
 static int fangfs_fuse_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
                                off_t offset, struct fuse_file_info* fi) {
-	return fangfs_readdir(&fangfs, path, buf, filler, offset, fi);
+	return fangfs_readdir(fangfs, path, buf, filler, offset, fi);
 }
 
 static int fangfs_fuse_releasedir(const char* path, struct fuse_file_info* fi) {
@@ -58,7 +58,7 @@ static int fangfs_fuse_releasedir(const char* path, struct fuse_file_info* fi) {
 static struct fuse_operations fang_ops;
 
 void handle_signal(int signum) {
-	fangfs_fsclose(&fangfs);
+	fangfs_fsclose(fangfs);
 
 	if(signum == SIGINT ||
 	   signum == SIGTERM) {
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
 	argv++;
 
 	{
-		const int status = fangfs_fsinit(&fangfs, source_dir);
+		const int status = fangfs_fsinit(fangfs, source_dir);
 		if(status < 0) {
 			fprintf(stderr, "Initialization error: %d.\n", status);
 			if(status == STATUS_CHECK_ERRNO) {
@@ -106,6 +106,6 @@ int main(int argc, char** argv) {
 
 	const int status = fuse_main(argc, argv, &fang_ops, NULL);
 
-	fangfs_fsclose(&fangfs);
+	fangfs_fsclose(fangfs);
 	return status;
 }

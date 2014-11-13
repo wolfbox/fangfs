@@ -2,9 +2,9 @@
 #include <unistd.h>
 #include "file.h"
 
-int fangfs_file_init(fangfs_file_t* self, fangfs_t* fs, int fd) {
-	self->fs = fs;
-	self->fd = fd;
+int fang_file_init(FangFile& self, FangFS& fs, int fd) {
+	self.fs = fs;
+	self.fd = fd;
 
 	return 0;
 }

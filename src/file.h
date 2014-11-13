@@ -2,9 +2,9 @@
 
 #include "fangfs.h"
 
-typedef struct {
-	fangfs_t* fs;
+struct FangFile {
+	FangFS& fs;
 	int fd;
-} fangfs_file_t;
+};
 
-int fangfs_file_init(fangfs_file_t* self, fangfs_t* fs, int fd);
+int fang_file_init(FangFile& self, FangFS& fs, int fd);
