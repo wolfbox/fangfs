@@ -157,6 +157,17 @@ int fangfs_read(fangfs_t* self, char* buf, size_t size, off_t offset, \
 	return n_read;
 }
 
+int fangfs_mkdir(fangfs_t* self, const char* path, mode_t mode) {
+	Buffer realpath;
+	path_resolve(self, path, realpath);
+
+	if(mkdir(reinterpret_cast<char*>(realpath.buf), mode) < 0) {
+		return -errno;
+	}
+
+	return 0;
+}
+
 int fangfs_opendir(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
 	Buffer real_path;
 
