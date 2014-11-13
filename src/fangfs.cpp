@@ -11,6 +11,7 @@
 #include <sys/statvfs.h>
 #include "util.h"
 #include "BufferEncryption.h"
+#include "file.h"
 #include "error.h"
 #include "compat/compat.h"
 
@@ -54,13 +55,7 @@ static int initialize_empty_filesystem(FangFS& self) {
 
 int fangfs_mknod(FangFS& self, const char* path, mode_t m, dev_t d) {
 	Buffer real_path;
-
-	{
-		int status = path_resolve(self, path, real_path);
-		if(status != 0) {
-			return -status;
-		}
-	}
+	path_resolve(self, path, real_path);
 
 	{
 		int status = mknod((char*)real_path.buf, m, d);
@@ -109,11 +104,7 @@ void fangfs_fsclose(FangFS& self) {
 
 int fangfs_getattr(FangFS& self, const char* path, struct stat* stbuf) {
 	Buffer real_path;
-
-	int status = path_resolve(self, path, real_path);
-    if(status != 0) {
-    	return -ENOMEM;
-    }
+	path_resolve(self, path, real_path);
 
 	if(stat((char*)real_path.buf, stbuf) < 0) {
 		return -errno;
@@ -124,11 +115,7 @@ int fangfs_getattr(FangFS& self, const char* path, struct stat* stbuf) {
 
 int fangfs_open(FangFS& self, const char* path, struct fuse_file_info* fi) {
 	Buffer real_path;
-	int status = path_resolve(self, path, real_path);
-
-	if(status != 0) {
-		return status;
-	}
+	path_resolve(self, path, real_path);
 
 	int fd = open((char*)real_path.buf, fi->flags);
 	int new_errno = errno;
@@ -145,16 +132,11 @@ int fangfs_open(FangFS& self, const char* path, struct fuse_file_info* fi) {
 int fangfs_read(FangFS& self, char* buf, size_t size, off_t offset, \
                 struct fuse_file_info* fi) {
 	if(fi->fh == 0) {
-		return EINVAL;
+		return -EINVAL;
 	}
 
-	{
-		int result = lseek(fi->fh, offset, SEEK_SET);
-		if(result < 0) { return errno; }
-	}
-	ssize_t n_read = read(fi->fh, buf, size);
-
-	return n_read;
+	FangFile file(self, fi->fh);
+	return fang_file_read(file, offset, size, reinterpret_cast<uint8_t*>(buf));
 }
 
 int fangfs_mkdir(FangFS& self, const char* path, mode_t mode) {
@@ -170,11 +152,7 @@ int fangfs_mkdir(FangFS& self, const char* path, mode_t mode) {
 
 int fangfs_opendir(FangFS& self, const char* path, struct fuse_file_info* fi) {
 	Buffer real_path;
-
-	int status = path_resolve(self, path, real_path);
-	if(status != 0) {
-		return status;
-	}
+	path_resolve(self, path, real_path);
 
 	DIR* dir = opendir((char*)real_path.buf);
 	int new_errno = errno;
@@ -252,10 +230,10 @@ int fangfs_close(FangFS& self, struct fuse_file_info* fi) {
 	return 0;
 }
 
-int path_resolve(FangFS& self, const char* path, Buffer& outbuf) {
+void path_resolve(FangFS& self, const char* path, Buffer& outbuf) {
 	if(strcmp(path, "/") == 0) {
 		buf_load_string(outbuf, self.source);
-		return 0;
+		return;
 	}
 
 	Buffer path_buf;
@@ -272,13 +250,9 @@ int path_resolve(FangFS& self, const char* path, Buffer& outbuf) {
 		          reinterpret_cast<char*>(encrypted_path.buf),
 		          outbuf);
 	});
-
-	fprintf(stderr, "Resolved: %s\n", outbuf.buf);
-
-	return 0;
 }
 
-int path_encrypt(FangFS& self, const char* orig, Buffer& outbuf) {
+void path_encrypt(FangFS& self, const char* orig, Buffer& outbuf) {
 	const size_t orig_len = strlen(orig);
 
 	// Four steps to this
@@ -303,8 +277,6 @@ int path_encrypt(FangFS& self, const char* orig, Buffer& outbuf) {
 	// 4) Encode
 	base32_enc(ciphertext, outbuf);
 	fprintf(stderr, "Encrypted: %s\n", outbuf.buf);
-
-	return 0;
 }
 
 int path_decrypt(FangFS& self, const char* orig, Buffer& outbuf) {

@@ -22,12 +22,13 @@ int buf_decrypt(const Buffer& inbuf,
 	                                        key);
 	if(result != 0) {
 		outbuf.len = 0;
-		outbuf.buf[0] = '\0';
+		if(outbuf.buf_len > 0) {
+			outbuf.buf[0] = '\0';
+		}
 		return result;
 	}
 
 	outbuf.len = outlen;
-	outbuf.buf[outbuf.len] = '\0';
 
 	return result;
 }

@@ -1,7 +1,7 @@
 Goals
 =====
 
-- Any (key, nonce) pair is NEVER reused.
+- Any (key, nonce) pair is never reused.
 - Key revocation.
 - As many file attributes as possible are encrypted.
 
@@ -37,11 +37,8 @@ In the rest of this document, the following symbols are used:
 Anatomy of a File
 =================
 
-Structure
----------
-
     filename: authenc(hash(orig.origPath) . orig.filename, FilenameNonce, MasterKey)
-    data: header . authenc(orig.data)
+    data: [block_nonce . authenc(block.data) for block in orig.data]
     stat: ?:nobody 600
           mtime: epoch
           atime: epoch
@@ -49,19 +46,11 @@ Structure
         __fangfs-stat: authenc(orig.stat)
         xattr: authenc(orig.<xattr>)
 
-Header
-------
-
-The header contains the following unpadded little-endian fields:
-
-    uint8_t version;
-
 Operational Design
 ==================
 
-EVERY time a file or its attributes are modified, a new nonce is generated.
 Files are divided into file system-sized blocks, and each block is
-encrypted along with its nonce in following un-padded structure:
+encrypted along with its nonce in the following un-padded structure:
 
     char nonce[NONCEBYTES];
     char ciphertext[LEN];
@@ -126,18 +115,7 @@ where ``path`` is the full path including filename. This yields
 Encoding
 --------
 
-The underlying "source" filesystem is assumed to be case-sensitive and to allow
-any characters except '\0' and '/'. Given this, the following substitutions
-are made:
-
-    \0 => a
-    a => aa
-    / => b
-    b => bb
-
-It may be worth in the future adding a "safe" mode, where all filenames are
-encoded in Base32 without padding. It is unclear that the added complexity
-and limitations of this mode would be worthwhile, however.
+Base32 with no padding.  May change.
 
 Path Lookup
 -----------
@@ -155,12 +133,14 @@ Path Lookup
 Directory Iteration
 -------------------
 
+In the following, HASH_LENGTH is the length of the 128-bit BLAKE2 hash output.
+
     def iterate(dirpath):
         real_path = lookup_path(dirpath)
         for file in real_path:
         	decrypted = authdec(path_join(dirpath, file.name), FilenameNonce, MasterKey)
-        	filename = decrypted[16:]
-        	verify(hash(path_join(dirpath, filename), decrypted[:16]))
+        	filename = decrypted[HASH_LENGTH:]
+        	verify(hash(path_join(dirpath, filename), decrypted[:HASH_LENGTH]))
         	yield filename
 
 Implications

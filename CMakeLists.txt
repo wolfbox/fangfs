@@ -26,6 +26,7 @@ else()
 endif()
 
 SET(SOURCE src/fangfs.cpp src/metafile.cpp src/file.cpp src/BufferEncryption.cpp ${UTIL_SOURCE})
+add_definitions(-D_FILE_OFFSET_BITS=64)
 
 pkg_check_modules(FUSE REQUIRED fuse)
 INCLUDE_DIRECTORIES(${FUSE_INCLUDE_DIRS})
