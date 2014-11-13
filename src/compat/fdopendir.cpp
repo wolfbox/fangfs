@@ -4,10 +4,10 @@
 
 DIR* fdopendir(int fd) {
     char path[MAXPATHLEN];
-    DIR* dir = NULL;
+    DIR* dir = nullptr;
 
     if(fcntl(fd, F_GETPATH, path) < 0) {
-        return NULL;
+        return nullptr;
     }
 
     dir = opendir(path);

@@ -24,7 +24,7 @@ inline size_t get_memory_size() {
         mib[1] = HW_MEMSIZE;
         size_t result;
         size_t len = sizeof(result);
-        if(sysctl(mib, 2, &result, &len, NULL, 0) < 0) {
+        if(sysctl(mib, 2, &result, &len, nullptr, 0) < 0) {
             return 0;
         }
         return result;

@@ -21,16 +21,16 @@ static int initialize_empty_filesystem(FangFS& self) {
 	// populated directory.
 	{
 		DIR* dir = opendir(self.source);
-		if(dir == NULL) {
+		if(dir == nullptr) {
 			return STATUS_CHECK_ERRNO;
 		}
 
 		int n_entries = 0;
 		struct dirent entry;
-		struct dirent* result = NULL;
+		struct dirent* result = nullptr;
 		errno = 0;
 		while(readdir_r(dir, &entry, &result) == 0) {
-			if(result == NULL) {
+			if(result == nullptr) {
 				break;
 			}
 			n_entries += 1;
@@ -179,7 +179,7 @@ int fangfs_opendir(FangFS& self, const char* path, struct fuse_file_info* fi) {
 	DIR* dir = opendir((char*)real_path.buf);
 	int new_errno = errno;
 
-	if(dir == NULL) {
+	if(dir == nullptr) {
 		return new_errno;
 	}
 
@@ -191,7 +191,7 @@ int fangfs_readdir(FangFS& self, const char* path, void* buf,
                         fuse_fill_dir_t filler, off_t offset,
                         struct fuse_file_info* fi) {
 	DIR* dir = fdopendir(fi->fh);
-	if(dir == NULL) {
+	if(dir == nullptr) {
 		return -errno;
 	}
 
@@ -201,7 +201,7 @@ int fangfs_readdir(FangFS& self, const char* path, void* buf,
 	struct dirent entry;
 	struct dirent* result;
 	while(readdir_r(dir, &entry, &result) == 0) {
-		if(result == NULL) {
+		if(result == nullptr) {
 			return 0;
 		}
 
@@ -209,7 +209,7 @@ int fangfs_readdir(FangFS& self, const char* path, void* buf,
 		if(entry.d_name[0] == '_') { continue; }
 		if(strcmp(entry.d_name, ".") == 0 ||
 		   strcmp(entry.d_name, "..") == 0) {
-			filler(buf, entry.d_name, NULL, 0);
+			filler(buf, entry.d_name, nullptr, 0);
 			continue;
 		}
 
@@ -238,7 +238,7 @@ int fangfs_readdir(FangFS& self, const char* path, void* buf,
 			}
 		}
 
-		filler(buf, filename, NULL, 0);
+		filler(buf, filename, nullptr, 0);
 	}
 
 	// Something went haywire

@@ -32,7 +32,7 @@ static int metafile_init_new(Metafile& self) {
 
 static Metafield* metafile_append_key(Metafile& self) {
 	if(self.n_keys >= METAFILE_MAX_KEYS) {
-		return NULL;
+		return nullptr;
 	}
 
 	Metafield* field = &self.keys[self.n_keys];
@@ -77,7 +77,7 @@ static int get_paths(Metafile& self, const char* sourcepath) {
 	Buffer path_buf;
 	path_join(sourcepath, METAFILE_NAME, path_buf);
 	self.metapath = buf_copy_string(path_buf);
-	if(self.metapath == NULL) {
+	if(self.metapath == nullptr) {
 		return STATUS_ERROR;
 	}
 
@@ -85,7 +85,7 @@ static int get_paths(Metafile& self, const char* sourcepath) {
 	path_join(sourcepath, METAFILE_LOCK, path_buf);
 
 	self.lockpath = buf_copy_string(path_buf);
-	if(self.lockpath == NULL) {
+	if(self.lockpath == nullptr) {
 		return STATUS_ERROR;
 	}
 

@@ -37,7 +37,7 @@ void buf_grow(Buffer& buf, size_t size) {
 
     // Otherwise, use the provided size.
     uint8_t* newbuf = (uint8_t*)realloc(buf.buf, size);
-    if(newbuf == NULL) { throw AllocationError(); }
+    if(newbuf == nullptr) { throw AllocationError(); }
     buf.buf_len = size;
     buf.buf = newbuf;
 }
