@@ -11,6 +11,7 @@
 #include <sys/statvfs.h>
 #include "util.h"
 #include "BufferEncryption.h"
+#include "file.h"
 #include "error.h"
 #include "compat/compat.h"
 
@@ -131,16 +132,11 @@ int fangfs_open(FangFS& self, const char* path, struct fuse_file_info* fi) {
 int fangfs_read(FangFS& self, char* buf, size_t size, off_t offset, \
                 struct fuse_file_info* fi) {
 	if(fi->fh == 0) {
-		return EINVAL;
+		return -EINVAL;
 	}
 
-	{
-		int result = lseek(fi->fh, offset, SEEK_SET);
-		if(result < 0) { return errno; }
-	}
-	ssize_t n_read = read(fi->fh, buf, size);
-
-	return n_read;
+	FangFile file(self, fi->fh);
+	return fang_file_read(file, offset, size, reinterpret_cast<uint8_t*>(buf));
 }
 
 int fangfs_mkdir(FangFS& self, const char* path, mode_t mode) {
