@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/statvfs.h>
 #include "util.h"
+#include "BufferEncryption.h"
 #include "error.h"
 #include "compat/compat.h"
 
@@ -226,25 +227,51 @@ int path_resolve(fangfs_t* self, const char* path, Buffer& outbuf) {
 		return 0;
 	}
 
+	Buffer path_buf;
+	buf_load_string(path_buf, path);
+
 	Buffer encrypted_path;
-	path_encrypt(self, path, encrypted_path);
+	Buffer tmpbuf;
 
-	path_join(self->source, (char*)encrypted_path.buf, outbuf);
+	buf_load_string(outbuf, self->source);
+	path_building_for_each(path_buf, [&](const Buffer& cur) {
+		path_encrypt(self, reinterpret_cast<char*>(cur.buf), encrypted_path);
+		buf_copy(outbuf, tmpbuf);
+		path_join(reinterpret_cast<char*>(tmpbuf.buf),
+		          reinterpret_cast<char*>(encrypted_path.buf),
+		          outbuf);
+	});
 
-	fprintf(stderr, "%s\n", outbuf.buf);
+	fprintf(stderr, "Resolved: %s\n", outbuf.buf);
 
 	return 0;
 }
 
 int path_encrypt(fangfs_t* self, const char* orig, Buffer& outbuf) {
 	const size_t orig_len = strlen(orig);
-	Buffer ciphertext;
-	buf_grow(ciphertext, orig_len + crypto_secretbox_MACBYTES);
-	crypto_secretbox_easy(ciphertext.buf, (uint8_t*)orig, orig_len,
-	                      self->metafile.filename_nonce, self->master_key);
-	ciphertext.len = orig_len + crypto_secretbox_MACBYTES;
 
+	// Four steps to this
+	// 1) Compute the hash of the whole path
+	uint8_t path_hash[16];
+	crypto_generichash(path_hash, sizeof(path_hash), reinterpret_cast<const uint8_t*>(orig),
+	                   orig_len, nullptr, 0);
+
+	// 2) Isolate just the filename
+	const char* basename = path_get_basename(orig);
+
+	// 3) Encrypt the concatenation of the hash with the filename
+	Buffer inbuf;
+	buf_grow(inbuf, sizeof(path_hash) + strlen(basename) + 1);
+	memcpy(inbuf.buf, path_hash, sizeof(path_hash));
+	strcpy(reinterpret_cast<char*>(inbuf.buf) + sizeof(path_hash), basename);
+	inbuf.len = inbuf.buf_len;
+
+	Buffer ciphertext;
+	buf_encrypt(inbuf, self->metafile.filename_nonce, self->master_key, ciphertext);
+
+	// 4) Encode
 	base32_enc(ciphertext, outbuf);
+	fprintf(stderr, "Encrypted: %s\n", outbuf.buf);
 
 	return 0;
 }
@@ -253,19 +280,12 @@ int path_decrypt(fangfs_t* self, const char* orig, Buffer& outbuf) {
 	Buffer ciphertext;
 
 	base32_dec(orig, ciphertext);
-	buf_grow(outbuf, ciphertext.len - crypto_secretbox_MACBYTES + 1);
 
-	int result = crypto_secretbox_open_easy(outbuf.buf, ciphertext.buf,
-	                                        ciphertext.len,
-	                                        self->metafile.filename_nonce,
-	                                        self->master_key);
-	if(result < 0) {
-		outbuf.len = 0;
+	int result = buf_decrypt(ciphertext, self->metafile.filename_nonce, self->master_key, outbuf);
+
+	if(result != 0) {
 		return STATUS_TAMPERING;
 	}
-
-	outbuf.len = ciphertext.len - crypto_secretbox_MACBYTES;
-	outbuf.buf[outbuf.len] = '\0';
 
 	return 0;
 }

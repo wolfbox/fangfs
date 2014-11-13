@@ -25,7 +25,7 @@ else()
 	message(FATAL_ERROR "Could not find any way of detecting system memory")
 endif()
 
-SET(SOURCE src/fangfs.cpp src/metafile.cpp src/file.cpp ${UTIL_SOURCE})
+SET(SOURCE src/fangfs.cpp src/metafile.cpp src/file.cpp src/BufferEncryption.cpp ${UTIL_SOURCE})
 
 pkg_check_modules(FUSE REQUIRED fuse)
 INCLUDE_DIRECTORIES(${FUSE_INCLUDE_DIRS})
