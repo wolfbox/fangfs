@@ -6,6 +6,7 @@
 #define STATUS_ERROR -1
 #define STATUS_CHECK_ERRNO -2
 #define STATUS_TAMPERING -3
+#define STATUS_METAFILE_TOO_MANY_KEYS -4
 
 class AllocationError: public std::runtime_error {
 public:

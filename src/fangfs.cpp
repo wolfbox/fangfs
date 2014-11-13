@@ -15,22 +15,22 @@
 #include "compat/compat.h"
 
 // Returns 0 on success, 1 if the directory is populated, and -1 on error.
-static int initialize_empty_filesystem(fangfs_t* self) {
+static int initialize_empty_filesystem(FangFS& self) {
 	// Make sure the source is a directory, and check if it's empty.
 	// Emptiness is checked to avoid creating a new source filesystem in a
 	// populated directory.
 	{
-		DIR* dir = opendir(self->source);
-		if(dir == NULL) {
+		DIR* dir = opendir(self.source);
+		if(dir == nullptr) {
 			return STATUS_CHECK_ERRNO;
 		}
 
 		int n_entries = 0;
 		struct dirent entry;
-		struct dirent* result = NULL;
+		struct dirent* result = nullptr;
 		errno = 0;
 		while(readdir_r(dir, &entry, &result) == 0) {
-			if(result == NULL) {
+			if(result == nullptr) {
 				break;
 			}
 			n_entries += 1;
@@ -44,15 +44,15 @@ static int initialize_empty_filesystem(fangfs_t* self) {
 	}
 
 	// Create our master key
-	randombytes_buf(self->master_key, sizeof(self->master_key));
+	randombytes_buf(self.master_key, sizeof(self.master_key));
 
 	// Create our metafile
-	metafile_write(&self->metafile);
+	metafile_write(self.metafile);
 
 	return 0;
 }
 
-int fangfs_mknod(fangfs_t* self, const char* path, mode_t m, dev_t d) {
+int fangfs_mknod(FangFS& self, const char* path, mode_t m, dev_t d) {
 	Buffer real_path;
 
 	{
@@ -73,17 +73,17 @@ int fangfs_mknod(fangfs_t* self, const char* path, mode_t m, dev_t d) {
 	return 0;
 }
 
-int fangfs_fsinit(fangfs_t* self, const char* source) {
-	self->source = source;
+int fangfs_fsinit(FangFS& self, const char* source) {
+	self.source = source;
 
 	// Prevent swapping out the master key
 	{
-		int error = sodium_mlock(self->master_key, sizeof(self->master_key));
+		int error = sodium_mlock(self.master_key, sizeof(self.master_key));
 		if(error) { return STATUS_ERROR; }
 	}
 
 	// If we already have a metafile, parse it.  Otherwise, initialize it.
-	int status = metafile_init(&self->metafile, source);
+	int status = metafile_init(self.metafile, source);
 	if(status == 0) {
 		int initstatus = initialize_empty_filesystem(self);
 		int new_errno = 0;
@@ -100,14 +100,14 @@ int fangfs_fsinit(fangfs_t* self, const char* source) {
 	return 0;
 }
 
-void fangfs_fsclose(fangfs_t* self) {
-	metafile_free(&self->metafile);
+void fangfs_fsclose(FangFS& self) {
+	metafile_free(self.metafile);
 
 	// Zeros the key and allows its page to be swapped again.
-	sodium_munlock(self->master_key, sizeof(self->master_key));
+	sodium_munlock(self.master_key, sizeof(self.master_key));
 }
 
-int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf) {
+int fangfs_getattr(FangFS& self, const char* path, struct stat* stbuf) {
 	Buffer real_path;
 
 	int status = path_resolve(self, path, real_path);
@@ -122,7 +122,7 @@ int fangfs_getattr(fangfs_t* self, const char* path, struct stat* stbuf) {
 	return 0;
 }
 
-int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
+int fangfs_open(FangFS& self, const char* path, struct fuse_file_info* fi) {
 	Buffer real_path;
 	int status = path_resolve(self, path, real_path);
 
@@ -142,7 +142,7 @@ int fangfs_open(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
 	return 0;
 }
 
-int fangfs_read(fangfs_t* self, char* buf, size_t size, off_t offset, \
+int fangfs_read(FangFS& self, char* buf, size_t size, off_t offset, \
                 struct fuse_file_info* fi) {
 	if(fi->fh == 0) {
 		return EINVAL;
@@ -157,7 +157,18 @@ int fangfs_read(fangfs_t* self, char* buf, size_t size, off_t offset, \
 	return n_read;
 }
 
-int fangfs_opendir(fangfs_t* self, const char* path, struct fuse_file_info* fi) {
+int fangfs_mkdir(FangFS& self, const char* path, mode_t mode) {
+	Buffer realpath;
+	path_resolve(self, path, realpath);
+
+	if(mkdir(reinterpret_cast<char*>(realpath.buf), mode) < 0) {
+		return -errno;
+	}
+
+	return 0;
+}
+
+int fangfs_opendir(FangFS& self, const char* path, struct fuse_file_info* fi) {
 	Buffer real_path;
 
 	int status = path_resolve(self, path, real_path);
@@ -168,7 +179,7 @@ int fangfs_opendir(fangfs_t* self, const char* path, struct fuse_file_info* fi) 
 	DIR* dir = opendir((char*)real_path.buf);
 	int new_errno = errno;
 
-	if(dir == NULL) {
+	if(dir == nullptr) {
 		return new_errno;
 	}
 
@@ -176,20 +187,21 @@ int fangfs_opendir(fangfs_t* self, const char* path, struct fuse_file_info* fi) 
 	return 0;
 }
 
-int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
+int fangfs_readdir(FangFS& self, const char* path, void* buf,
                         fuse_fill_dir_t filler, off_t offset,
                         struct fuse_file_info* fi) {
 	DIR* dir = fdopendir(fi->fh);
-	if(dir == NULL) {
+	if(dir == nullptr) {
 		return -errno;
 	}
 
 	Buffer decrypted;
+	Buffer fullpath;
 
 	struct dirent entry;
 	struct dirent* result;
 	while(readdir_r(dir, &entry, &result) == 0) {
-		if(result == NULL) {
+		if(result == nullptr) {
 			return 0;
 		}
 
@@ -197,7 +209,7 @@ int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
 		if(entry.d_name[0] == '_') { continue; }
 		if(strcmp(entry.d_name, ".") == 0 ||
 		   strcmp(entry.d_name, "..") == 0) {
-			filler(buf, entry.d_name, NULL, 0);
+			filler(buf, entry.d_name, nullptr, 0);
 			continue;
 		}
 
@@ -207,7 +219,26 @@ int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
 			fprintf(stderr, "Tampering detected on file %s\n", entry.d_name);
 			continue;
 		}
-		filler(buf, (char*)decrypted.buf, NULL, 0);
+
+		// Strip out the hash
+		const char* filename = reinterpret_cast<char*>(decrypted.buf) +
+		                       crypto_generichash_BYTES;
+
+		// Verify the hash, preventing files from being moved around by someone
+		// outside the encrypted filesystem.
+		{
+			path_join(path, filename, fullpath);
+			fprintf(stderr, "Reading: %s\n", (char*)fullpath.buf);
+			uint8_t path_hash[crypto_generichash_BYTES];
+			crypto_generichash(path_hash, sizeof(path_hash),
+			                   reinterpret_cast<const uint8_t*>(fullpath.buf),
+			                   fullpath.len, nullptr, 0);
+			if(sodium_memcmp(path_hash, decrypted.buf, sizeof(path_hash)) != 0) {
+				continue;
+			}
+		}
+
+		filler(buf, filename, nullptr, 0);
 	}
 
 	// Something went haywire
@@ -216,14 +247,14 @@ int fangfs_readdir(fangfs_t* self, const char* path, void* buf,
 	return -new_errno;
 }
 
-int fangfs_close(fangfs_t* self, struct fuse_file_info* fi) {
+int fangfs_close(FangFS& self, struct fuse_file_info* fi) {
 	close(fi->fh);
 	return 0;
 }
 
-int path_resolve(fangfs_t* self, const char* path, Buffer& outbuf) {
+int path_resolve(FangFS& self, const char* path, Buffer& outbuf) {
 	if(strcmp(path, "/") == 0) {
-		buf_load_string(outbuf, self->source);
+		buf_load_string(outbuf, self.source);
 		return 0;
 	}
 
@@ -233,7 +264,7 @@ int path_resolve(fangfs_t* self, const char* path, Buffer& outbuf) {
 	Buffer encrypted_path;
 	Buffer tmpbuf;
 
-	buf_load_string(outbuf, self->source);
+	buf_load_string(outbuf, self.source);
 	path_building_for_each(path_buf, [&](const Buffer& cur) {
 		path_encrypt(self, reinterpret_cast<char*>(cur.buf), encrypted_path);
 		buf_copy(outbuf, tmpbuf);
@@ -247,12 +278,12 @@ int path_resolve(fangfs_t* self, const char* path, Buffer& outbuf) {
 	return 0;
 }
 
-int path_encrypt(fangfs_t* self, const char* orig, Buffer& outbuf) {
+int path_encrypt(FangFS& self, const char* orig, Buffer& outbuf) {
 	const size_t orig_len = strlen(orig);
 
 	// Four steps to this
 	// 1) Compute the hash of the whole path
-	uint8_t path_hash[16];
+	uint8_t path_hash[crypto_generichash_BYTES];
 	crypto_generichash(path_hash, sizeof(path_hash), reinterpret_cast<const uint8_t*>(orig),
 	                   orig_len, nullptr, 0);
 
@@ -267,7 +298,7 @@ int path_encrypt(fangfs_t* self, const char* orig, Buffer& outbuf) {
 	inbuf.len = inbuf.buf_len;
 
 	Buffer ciphertext;
-	buf_encrypt(inbuf, self->metafile.filename_nonce, self->master_key, ciphertext);
+	buf_encrypt(inbuf, self.metafile.filename_nonce, self.master_key, ciphertext);
 
 	// 4) Encode
 	base32_enc(ciphertext, outbuf);
@@ -276,12 +307,12 @@ int path_encrypt(fangfs_t* self, const char* orig, Buffer& outbuf) {
 	return 0;
 }
 
-int path_decrypt(fangfs_t* self, const char* orig, Buffer& outbuf) {
+int path_decrypt(FangFS& self, const char* orig, Buffer& outbuf) {
 	Buffer ciphertext;
 
 	base32_dec(orig, ciphertext);
 
-	int result = buf_decrypt(ciphertext, self->metafile.filename_nonce, self->master_key, outbuf);
+	int result = buf_decrypt(ciphertext, self.metafile.filename_nonce, self.master_key, outbuf);
 
 	if(result != 0) {
 		return STATUS_TAMPERING;

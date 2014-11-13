@@ -6,7 +6,7 @@
 void test_field(void) {
 	do_test();
 
-	metafield_t field;
+	Metafield field;
 
 	char nonce[sizeof(field.nonce)];
 	memset(nonce, 0, sizeof(nonce));
@@ -21,7 +21,7 @@ void test_field(void) {
 	uint8_t buf[META_FIELD_LEN];
 
 	// Test serialize
-	metafield_serialize(&field, buf);
+	metafield_serialize(field, buf);
 
 	const uint8_t rightbuf[META_FIELD_LEN] = {
 	    0x01, 0x02, 0x00, 0x00,
@@ -33,8 +33,8 @@ void test_field(void) {
 
 	// Test parse
 	{
-		metafield_t field2;
-		metafield_parse(&field2, buf);
+		Metafield field2;
+		metafield_parse(field2, buf);
 		verify(memcmp(&field, &field2, sizeof(field)) == 0);
 	}
 }
