@@ -46,7 +46,7 @@ static int fangfs_fuse_readdir(const char* path, void* buf, fuse_fill_dir_t fill
 
 static int fangfs_fuse_releasedir(const char* path, struct fuse_file_info* fi) {
 	DIR* dir = fdopendir(fi->fh);
-	if(dir == NULL) { return -errno; }
+	if(dir == nullptr) { return -errno; }
 
 	if(closedir(fdopendir(fi->fh)) < 0) {
 		return -errno;
@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
 	argc--;
 	argv++;
 
-	{
+	try {
 		const int status = fangfs_fsinit(fangfs, source_dir);
 		if(status < 0) {
 			fprintf(stderr, "Initialization error: %d.\n", status);
@@ -94,6 +94,9 @@ int main(int argc, char** argv) {
 			}
 			return 1;
 		}
+	} catch (std::runtime_error& e) {
+		fprintf(stderr, "Initialization panic: %s\n", e.what());
+		return 1;
 	}
 
 	// If we recieve a shutdown signal, we still want to clear any secret
@@ -101,11 +104,15 @@ int main(int argc, char** argv) {
 	struct sigaction action;
 	memset(&action, 0, sizeof(struct sigaction));
 	action.sa_handler = handle_signal;
-	sigaction(SIGINT, &action, NULL);
-	sigaction(SIGTERM, &action, NULL);
+	sigaction(SIGINT, &action, nullptr);
+	sigaction(SIGTERM, &action, nullptr);
 
-	const int status = fuse_main(argc, argv, &fang_ops, NULL);
-
-	fangfs_fsclose(fangfs);
-	return status;
+	try {
+		const int status = fuse_main(argc, argv, &fang_ops, nullptr);
+		fangfs_fsclose(fangfs);
+		return status;
+	} catch (std::runtime_error& e) {
+		fprintf(stderr, "Panic: %s\n", e.what());
+		return 1;
+	}
 }
