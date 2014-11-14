@@ -68,6 +68,17 @@ int fangfs_mknod(FangFS& self, const char* path, mode_t m, dev_t d) {
 	return 0;
 }
 
+int fangfs_unlink(FangFS& self, const char* path) {
+	Buffer real_path;
+	path_resolve(self, path, real_path);
+
+	if(unlink(reinterpret_cast<char*>(real_path.buf)) != 0) {
+		return -errno;
+	}
+
+	return 0;
+}
+
 int fangfs_fsinit(FangFS& self, const char* source) {
 	self.source = source;
 
