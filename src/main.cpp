@@ -35,6 +35,11 @@ static int fangfs_fuse_read(const char* path, char* buf, size_t size, \
 	return fangfs_read(fangfs, buf, size, offset, fi);
 }
 
+static int fangfs_fuse_write(const char* path, const char* buf, size_t size, \
+                             off_t offset, struct fuse_file_info* fi) {
+	return fangfs_write(fangfs, buf, size, offset, fi);
+}
+
 static int fangfs_fuse_mkdir(const char* path, mode_t mode) {
 	return fangfs_mkdir(fangfs, path, mode);
 }
@@ -77,6 +82,7 @@ int main(int argc, char** argv) {
     fang_ops.release = fangfs_fuse_release;
     fang_ops.getattr = fangfs_fuse_getattr;
     fang_ops.read = fangfs_fuse_read;
+    fang_ops.write = fangfs_fuse_write;
     fang_ops.mkdir = fangfs_fuse_mkdir;
     fang_ops.opendir = fangfs_fuse_opendir;
     fang_ops.readdir = fangfs_fuse_readdir;

@@ -25,6 +25,8 @@ int fangfs_close(FangFS& self, struct fuse_file_info* fi);
 int fangfs_getattr(FangFS& self, const char* path, struct stat* stbuf);
 int fangfs_read(FangFS& self, char* buf, size_t size, off_t offset, \
                 struct fuse_file_info* fi);
+int fangfs_write(FangFS& self, const char* buf, size_t size, off_t offset, \
+                 struct fuse_file_info* fi);
 int fangfs_mkdir(FangFS& self, const char* path, mode_t mode);
 int fangfs_opendir(FangFS& self, const char* path, struct fuse_file_info* fi);
 int fangfs_readdir(FangFS& self, const char* path, void* buf,
