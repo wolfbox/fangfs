@@ -14,6 +14,14 @@ static int fangfs_fuse_mknod(const char* path, mode_t m, dev_t d) {
 	return fangfs_mknod(fangfs, path, m, d);
 }
 
+static int fangfs_fuse_truncate(const char* path, off_t end) {
+	return fangfs_truncate(fangfs, path, end);
+}
+
+static int fangfs_fuse_ftruncate(const char* path, off_t end, struct fuse_file_info* fi) {
+	return fangfs_ftruncate(fangfs, path, end, fi);
+}
+
 static int fangfs_fuse_unlink(const char* path) {
 	return fangfs_unlink(fangfs, path);
 }
@@ -77,6 +85,8 @@ void handle_signal(int signum) {
 
 int main(int argc, char** argv) {
 	fang_ops.mknod = fangfs_fuse_mknod;
+	fang_ops.truncate = fangfs_fuse_truncate;
+	fang_ops.ftruncate = fangfs_fuse_ftruncate;
 	fang_ops.unlink = fangfs_fuse_unlink;
     fang_ops.open = fangfs_fuse_open;
     fang_ops.release = fangfs_fuse_release;

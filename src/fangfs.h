@@ -19,6 +19,8 @@ int fangfs_fsinit(FangFS& self, const char* source);
 void fangfs_fsclose(FangFS& self);
 
 int fangfs_mknod(FangFS& self, const char* path, mode_t m, dev_t d);
+int fangfs_truncate(FangFS& self, const char* path, off_t end);
+int fangfs_ftruncate(FangFS& self, const char* path, off_t end, struct fuse_file_info* fi);
 int fangfs_unlink(FangFS& self, const char* path);
 int fangfs_open(FangFS& self, const char* path, struct fuse_file_info* fi);
 int fangfs_close(FangFS& self, struct fuse_file_info* fi);

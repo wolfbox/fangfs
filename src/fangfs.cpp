@@ -67,6 +67,36 @@ int fangfs_mknod(FangFS& self, const char* path, mode_t m, dev_t d) {
 	return 0;
 }
 
+int fangfs_truncate(FangFS& self, const char* path, off_t end) {
+	Buffer real_path;
+	path_resolve(self, path, real_path);
+
+	int fd = open(reinterpret_cast<char*>(real_path.buf), O_RDWR, 0);
+	if(fd < 0) { return errno; }
+
+	struct fuse_file_info fi;
+	fi.fh = fd;
+	fangfs_ftruncate(self, path, end, &fi);
+
+	if(close(fd) < 0) { return errno; }
+	return 0;
+}
+
+int fangfs_ftruncate(FangFS& self, const char* path, off_t end, struct fuse_file_info* fi) {
+	if(fi->fh == 0) {
+		return -EINVAL;
+	}
+
+	fprintf(stderr, "Truncating %s to %lu\n", path, end);
+	if(end == 0) {
+		// This is common, so let's fast-path this
+		return ftruncate(fi->fh, 0);
+	}
+
+	errno = ENOSYS;
+	return -errno;
+}
+
 int fangfs_unlink(FangFS& self, const char* path) {
 	Buffer real_path;
 	path_resolve(self, path, real_path);
