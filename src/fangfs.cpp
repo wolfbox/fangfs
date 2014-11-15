@@ -58,7 +58,7 @@ int fangfs_mknod(FangFS& self, const char* path, mode_t m, dev_t d) {
 	path_resolve(self, path, real_path);
 
 	{
-		int status = mknod((char*)real_path.buf, m, d);
+		int status = mknod(reinterpret_cast<char*>(real_path.buf), m, d);
 		if(status < 0) {
 			return -errno;
 		}
@@ -116,7 +116,7 @@ int fangfs_getattr(FangFS& self, const char* path, struct stat* stbuf) {
 	Buffer real_path;
 	path_resolve(self, path, real_path);
 
-	if(stat((char*)real_path.buf, stbuf) < 0) {
+	if(stat(reinterpret_cast<char*>(real_path.buf), stbuf) < 0) {
 		return -errno;
 	}
 
@@ -133,7 +133,7 @@ int fangfs_open(FangFS& self, const char* path, struct fuse_file_info* fi) {
 		flags = O_RDWR;
 	}
 
-	int fd = open((char*)real_path.buf, flags);
+	int fd = open(reinterpret_cast<char*>(real_path.buf), flags);
 	int new_errno = errno;
 
 	if(fd < 0) {
@@ -180,7 +180,7 @@ int fangfs_opendir(FangFS& self, const char* path, struct fuse_file_info* fi) {
 	Buffer real_path;
 	path_resolve(self, path, real_path);
 
-	DIR* dir = opendir((char*)real_path.buf);
+	DIR* dir = opendir(reinterpret_cast<char*>(real_path.buf));
 	int new_errno = errno;
 
 	if(dir == nullptr) {

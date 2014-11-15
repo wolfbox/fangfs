@@ -57,13 +57,13 @@ void buf_copy(const Buffer& src, Buffer& dest) {
 }
 
 char* buf_copy_string(Buffer& buf) {
-    size_t len = strlen((char*)buf.buf);
-    uint8_t* newbuf = (uint8_t*)malloc(len + 1); // Space for terminating null byte
+    size_t len = strlen(reinterpret_cast<char*>(buf.buf));
+    uint8_t* newbuf = reinterpret_cast<uint8_t*>(malloc(len + 1)); // Space for terminating null byte
     if(newbuf == nullptr) { throw AllocationError(); }
 
-    strcpy((char*)newbuf, (char*)buf.buf);
+    strcpy(reinterpret_cast<char*>(newbuf), reinterpret_cast<char*>(buf.buf));
     buf.len = len;
-    return (char*)newbuf;
+    return reinterpret_cast<char*>(newbuf);
 }
 
 void buf_free(Buffer& buf) {
