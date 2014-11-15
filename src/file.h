@@ -13,5 +13,5 @@ struct FangFile {
 };
 
 int fang_file_read(FangFile& self, off_t offset, size_t len, uint8_t* outbuf);
-int fang_file_write(FangFile& self, off_t offset, size_t len, void* buf);
+int fang_file_write(FangFile& self, off_t offset, size_t len, const uint8_t* buf);
 off_t fang_file_seek(FangFile& self, off_t offset, int whence);

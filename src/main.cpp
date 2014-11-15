@@ -14,6 +14,10 @@ static int fangfs_fuse_mknod(const char* path, mode_t m, dev_t d) {
 	return fangfs_mknod(fangfs, path, m, d);
 }
 
+static int fangfs_fuse_unlink(const char* path) {
+	return fangfs_unlink(fangfs, path);
+}
+
 static int fangfs_fuse_open(const char* path, struct fuse_file_info* fi) {
 	return fangfs_open(fangfs, path, fi);
 }
@@ -29,6 +33,11 @@ static int fangfs_fuse_getattr(const char* path, struct stat* stbuf) {
 static int fangfs_fuse_read(const char* path, char* buf, size_t size, \
                             off_t offset, struct fuse_file_info* fi) {
 	return fangfs_read(fangfs, buf, size, offset, fi);
+}
+
+static int fangfs_fuse_write(const char* path, const char* buf, size_t size, \
+                             off_t offset, struct fuse_file_info* fi) {
+	return fangfs_write(fangfs, buf, size, offset, fi);
 }
 
 static int fangfs_fuse_mkdir(const char* path, mode_t mode) {
@@ -68,10 +77,12 @@ void handle_signal(int signum) {
 
 int main(int argc, char** argv) {
 	fang_ops.mknod = fangfs_fuse_mknod;
+	fang_ops.unlink = fangfs_fuse_unlink;
     fang_ops.open = fangfs_fuse_open;
     fang_ops.release = fangfs_fuse_release;
     fang_ops.getattr = fangfs_fuse_getattr;
     fang_ops.read = fangfs_fuse_read;
+    fang_ops.write = fangfs_fuse_write;
     fang_ops.mkdir = fangfs_fuse_mkdir;
     fang_ops.opendir = fangfs_fuse_opendir;
     fang_ops.readdir = fangfs_fuse_readdir;

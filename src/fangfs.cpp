@@ -64,7 +64,17 @@ int fangfs_mknod(FangFS& self, const char* path, mode_t m, dev_t d) {
 		}
 	}
 
-	printf("mknod OK\n");
+	return 0;
+}
+
+int fangfs_unlink(FangFS& self, const char* path) {
+	Buffer real_path;
+	path_resolve(self, path, real_path);
+
+	if(unlink(reinterpret_cast<char*>(real_path.buf)) != 0) {
+		return -errno;
+	}
+
 	return 0;
 }
 
@@ -117,7 +127,13 @@ int fangfs_open(FangFS& self, const char* path, struct fuse_file_info* fi) {
 	Buffer real_path;
 	path_resolve(self, path, real_path);
 
-	int fd = open((char*)real_path.buf, fi->flags);
+	// Writing to a block always requires reading it in
+	int flags = fi->flags;
+	if(flags & O_WRONLY) {
+		flags = O_RDWR;
+	}
+
+	int fd = open((char*)real_path.buf, flags);
 	int new_errno = errno;
 
 	if(fd < 0) {
@@ -137,6 +153,16 @@ int fangfs_read(FangFS& self, char* buf, size_t size, off_t offset, \
 
 	FangFile file(self, fi->fh);
 	return fang_file_read(file, offset, size, reinterpret_cast<uint8_t*>(buf));
+}
+
+int fangfs_write(FangFS& self, const char* buf, size_t size, off_t offset, \
+                 struct fuse_file_info* fi) {
+	if(fi->fh == 0) {
+		return -EINVAL;
+	}
+
+	FangFile file(self, fi->fh);
+	return fang_file_write(file, offset, size, reinterpret_cast<const uint8_t*>(buf));
 }
 
 int fangfs_mkdir(FangFS& self, const char* path, mode_t mode) {
@@ -206,7 +232,6 @@ int fangfs_readdir(FangFS& self, const char* path, void* buf,
 		// outside the encrypted filesystem.
 		{
 			path_join(path, filename, fullpath);
-			fprintf(stderr, "Reading: %s\n", (char*)fullpath.buf);
 			uint8_t path_hash[crypto_generichash_BYTES];
 			crypto_generichash(path_hash, sizeof(path_hash),
 			                   reinterpret_cast<const uint8_t*>(fullpath.buf),
